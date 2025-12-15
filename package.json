@@ -31,7 +31,7 @@
     "date-fns": "^4.1.0",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
-    "lucide-react": "^0.555.0",
+    "lucide-react": "^0.560.0",
     "nitro": "latest",
     "pdf-lib": "^1.17.1",
     "react": "^19.2.1",
