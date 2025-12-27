@@ -35,30 +35,33 @@ export function DateRangePicker({
 
 	return (
 		<Popover open={isOpen} onOpenChange={setIsOpen}>
-			<PopoverTrigger asChild>
-				<Button
-					variant="outline"
-					className={cn(
-						"w-[280px] justify-start text-left font-normal",
-						!dateRange.from && "text-muted-foreground",
-						className,
-					)}
-				>
-					<CalendarIcon className="mr-2 h-4 w-4" />
-					{dateRange.from ? (
-						dateRange.to ? (
-							<>
-								{format(dateRange.from, "LLL dd, y")} -{" "}
-								{format(dateRange.to, "LLL dd, y")}
-							</>
+			<PopoverTrigger
+				render={(props) => (
+					<Button
+						{...props}
+						variant="outline"
+						className={cn(
+							"w-[280px] justify-start text-left font-normal",
+							!dateRange.from && "text-muted-foreground",
+							className,
+						)}
+					>
+						<CalendarIcon className="mr-2 h-4 w-4" />
+						{dateRange.from ? (
+							dateRange.to ? (
+								<>
+									{format(dateRange.from, "LLL dd, y")} -{" "}
+									{format(dateRange.to, "LLL dd, y")}
+								</>
+							) : (
+								format(dateRange.from, "LLL dd, y")
+							)
 						) : (
-							format(dateRange.from, "LLL dd, y")
-						)
-					) : (
-						<span>Pick a date range</span>
-					)}
-				</Button>
-			</PopoverTrigger>
+							<span>Pick a date range</span>
+						)}
+					</Button>
+				)}
+			/>
 			<PopoverContent className="w-auto p-0" align="start">
 				<Calendar
 					initialFocus

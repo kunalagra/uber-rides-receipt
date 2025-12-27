@@ -91,16 +91,19 @@ export function SelectionSummary({
 						</Button>
 
 						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="default"
-									disabled={!hasSelection || isLoading}
-									className="rounded-l-none px-3"
-								>
-									<MoreVertical className="h-4 w-4" />
-									<span className="sr-only">More options</span>
-								</Button>
-							</DropdownMenuTrigger>
+							<DropdownMenuTrigger
+								render={(props) => (
+									<Button
+										{...props}
+										variant="default"
+										disabled={!hasSelection || isLoading}
+										className="rounded-l-none px-3"
+									>
+										<MoreVertical className="h-4 w-4" />
+										<span className="sr-only">More options</span>
+									</Button>
+								)}
+							/>
 							<DropdownMenuContent align="end">
 								<DropdownMenuItem onClick={onDownloadInvoices}>
 									<Download className="mr-2 h-4 w-4" />

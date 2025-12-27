@@ -52,7 +52,7 @@ $ bun run dev
 
 > [!IMPORTANT]  
 > **Authentication Setup**: The app requires your Uber session cookie to fetch ride data.
-> 1. Log in to `riders.uber.com` in your browser
+> 1. Log in to `riders.uber.com/trips` in your browser
 > 2. Open Developer Tools → Network tab
 > 3. Find any GraphQL request and copy the `cookie` header value
 > 4. Paste it into the app's authentication modal when prompted

@@ -593,21 +593,28 @@ function UberReceiptsDashboard() {
 									</span>
 									{/* Status Filter */}
 									<DropdownMenu>
-										<DropdownMenuTrigger asChild>
-											<Button variant="outline" size="sm" className="gap-1">
-												<Filter className="h-3 w-3" />
-												<Badge
-													variant={
-														statusFilter === "COMPLETED"
-															? "default"
-															: "secondary"
-													}
-													className="ml-1"
+										<DropdownMenuTrigger
+											render={(props) => (
+												<Button
+													{...props}
+													variant="outline"
+													size="sm"
+													className="gap-1"
 												>
-													{statusFilter === "COMPLETED" ? "Completed" : "All"}
-												</Badge>
-											</Button>
-										</DropdownMenuTrigger>
+													<Filter className="h-3 w-3" />
+													<Badge
+														variant={
+															statusFilter === "COMPLETED"
+																? "default"
+																: "secondary"
+														}
+														className="ml-1"
+													>
+														{statusFilter === "COMPLETED" ? "Completed" : "All"}
+													</Badge>
+												</Button>
+											)}
+										/>
 										<DropdownMenuContent align="start">
 											<DropdownMenuItem
 												onClick={() => setStatusFilter("COMPLETED")}

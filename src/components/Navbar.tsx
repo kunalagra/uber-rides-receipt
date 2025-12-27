@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
@@ -77,59 +78,64 @@ export function Navbar({
 
 					{/* Profile dropdown */}
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							{isAuthenticated && user ? (
-								<Button
-									variant="ghost"
-									className="relative h-9 w-9 rounded-full"
-								>
-									<Avatar className="h-9 w-9">
-										<AvatarImage
-											src={user.pictureUrl}
-											alt={`${user.firstName}'s profile`}
-										/>
-										<AvatarFallback className="bg-primary text-primary-foreground">
-											{userInitials}
-										</AvatarFallback>
-									</Avatar>
-								</Button>
-							) : (
-								<Button variant="ghost" size="icon">
-									<MoreVertical className="h-5 w-5" />
-								</Button>
-							)}
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-56">
-							{isAuthenticated && user ? (
-								<>
-									<DropdownMenuLabel className="font-normal">
-										<div className="flex flex-col space-y-1">
-											<p className="text-sm font-medium leading-none">
-												{user.firstName} {user.lastName}
-											</p>
-											<p className="text-xs leading-none text-muted-foreground">
-												{user.email}
-											</p>
-										</div>
-									</DropdownMenuLabel>
-									<DropdownMenuSeparator />
+						<DropdownMenuGroup>
+							<DropdownMenuTrigger
+								render={(props) =>
+									isAuthenticated && user ? (
+										<Button
+											{...props}
+											variant="ghost"
+											className="relative h-9 w-9 rounded-full"
+										>
+											<Avatar className="h-9 w-9">
+												<AvatarImage
+													src={user.pictureUrl}
+													alt={`${user.firstName}'s profile`}
+												/>
+												<AvatarFallback className="bg-primary text-primary-foreground">
+													{userInitials}
+												</AvatarFallback>
+											</Avatar>
+										</Button>
+									) : (
+										<Button {...props} variant="ghost" size="icon">
+											<MoreVertical className="h-5 w-5" />
+										</Button>
+									)
+								}
+							/>
+							<DropdownMenuContent align="end" className="w-56">
+								{isAuthenticated && user ? (
+									<>
+										<DropdownMenuLabel className="font-normal">
+											<div className="flex flex-col space-y-1">
+												<p className="text-sm font-medium leading-none">
+													{user.firstName} {user.lastName}
+												</p>
+												<p className="text-xs leading-none text-muted-foreground">
+													{user.email}
+												</p>
+											</div>
+										</DropdownMenuLabel>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem onClick={onOpenAuthModal}>
+											<Key className="mr-2 h-4 w-4" />
+											Update Auth
+										</DropdownMenuItem>
+										<DropdownMenuSeparator />
+										<DropdownMenuItem onClick={onLogout}>
+											<LogOut className="mr-2 h-4 w-4" />
+											Logout
+										</DropdownMenuItem>
+									</>
+								) : (
 									<DropdownMenuItem onClick={onOpenAuthModal}>
-										<Key className="mr-2 h-4 w-4" />
-										Update Auth
+										<User className="mr-2 h-4 w-4" />
+										Connect Uber Account
 									</DropdownMenuItem>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem onClick={onLogout}>
-										<LogOut className="mr-2 h-4 w-4" />
-										Logout
-									</DropdownMenuItem>
-								</>
-							) : (
-								<DropdownMenuItem onClick={onOpenAuthModal}>
-									<User className="mr-2 h-4 w-4" />
-									Connect Uber Account
-								</DropdownMenuItem>
-							)}
-						</DropdownMenuContent>
+								)}
+							</DropdownMenuContent>
+						</DropdownMenuGroup>
 					</DropdownMenu>
 				</div>
 			</div>

@@ -89,12 +89,12 @@ export function AuthSetupModal({
 								<li>
 									Open{" "}
 									<a
-										href="https://riders.uber.com"
+										href="https://riders.uber.com/trips"
 										target="_blank"
 										rel="noopener noreferrer"
 										className="underline text-primary"
 									>
-										riders.uber.com
+										riders.uber.com/trips
 									</a>{" "}
 									and log in
 								</li>
@@ -103,7 +103,7 @@ export function AuthSetupModal({
 								<li>Refresh the page</li>
 								<li>
 									Click on any "graphql" request and copy the "cookie" header
-									value
+									value under the Request Header
 								</li>
 							</ol>
 						</AlertDescription>
