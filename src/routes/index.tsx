@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
-import { format, isBefore, parseISO, startOfDay, startOfMonth } from "date-fns";
+import { format, startOfDay, startOfMonth } from "date-fns";
 import { Calendar, Car, Filter, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthSetupModal } from "@/components/AuthSetupModal";
@@ -32,22 +32,6 @@ import type {
 } from "@/types/uber-api";
 
 export const Route = createFileRoute("/")({ component: UberReceiptsDashboard });
-
-// Helper to parse ride date - moved outside component for stability
-function parseRideDate(dateStr: string): Date | null {
-	if (!dateStr) return null;
-	try {
-		// Try ISO format first
-		const isoDate = parseISO(dateStr);
-		if (!Number.isNaN(isoDate.getTime())) return isoDate;
-		// Try direct Date parsing
-		const directDate = new Date(dateStr);
-		if (!Number.isNaN(directDate.getTime())) return directDate;
-	} catch {
-		// ignore
-	}
-	return null;
-}
 
 function UberReceiptsDashboard() {
 	// Auth state
