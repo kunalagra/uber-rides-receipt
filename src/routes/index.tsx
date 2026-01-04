@@ -157,16 +157,19 @@ function UberReceiptsDashboard() {
 		setHasSearched(true);
 		setFetchProgress("Fetching activities...");
 
+		// Convert date range to timestamps (milliseconds)
 		const startDate = startOfDay(dateRange.from);
+		const endDate = dateRange.to ? startOfDay(dateRange.to) : new Date();
+		const startTimeMs = startDate.getTime();
+		const endTimeMs = endDate.getTime();
 
 		try {
-			// Step 1: Fetch all activities until we reach start date
+			// Step 1: Fetch all activities with date range filter
 			const allActivities: TransformedRide[] = [];
 			let pageToken: string | undefined;
-			let reachedStartDate = false;
 			let pageCount = 0;
 
-			while (!reachedStartDate) {
+			while (true) {
 				pageCount++;
 				setFetchProgress(
 					`Fetching activities (page ${pageCount}, ${allActivities.length} rides)...`,
@@ -177,6 +180,8 @@ function UberReceiptsDashboard() {
 						auth,
 						limit: 50,
 						nextPageToken: pageToken,
+						startTimeMs,
+						endTimeMs,
 					},
 				});
 
@@ -185,26 +190,8 @@ function UberReceiptsDashboard() {
 					break;
 				}
 
-				// Filter activities within date range
-				// Activities come in descending order (newest first)
-				for (const activity of result.activities) {
-					const activityDate = parseRideDate(activity.startTime);
-
-					// If we can't parse the date, include it anyway
-					if (!activityDate) {
-						allActivities.push(activity);
-						continue;
-					}
-
-					// Check if activity is before start date - stop fetching
-					if (isBefore(activityDate, startDate)) {
-						reachedStartDate = true;
-						break;
-					}
-
-					// Include all activities from start date onwards (up to today)
-					allActivities.push(activity);
-				}
+				// Add all activities (API already filtered by date range)
+				allActivities.push(...result.activities);
 
 				// Check if there are more pages
 				if (!result.nextPageToken) {
