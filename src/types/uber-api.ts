@@ -122,7 +122,6 @@ export interface TransformedRide {
 	startLocation: string;
 	endLocation: string;
 	totalAmount: number;
-	originalAmount?: number; // Track original amount for revert functionality
 	currency: string;
 	driverName: string;
 	vehicleType: string;

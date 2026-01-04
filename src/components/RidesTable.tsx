@@ -14,14 +14,11 @@ import {
 	ArrowUpDown,
 	Bike,
 	Car,
-	RotateCcw,
 	Truck,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
 	Table,
 	TableBody,
@@ -38,8 +35,6 @@ interface RidesTableProps {
 	onRowSelectionChange: (selection: RowSelectionState) => void;
 	sorting: SortingState;
 	onSortingChange: (sorting: SortingState) => void;
-	onAmountChange: (rideId: string, newAmount: number) => void;
-	onAmountRevert: (rideId: string) => void;
 }
 
 function formatDateTime(dateStr: string): { date: string; time: string } {
@@ -72,40 +67,10 @@ function getVehicleIcon(vehicleType: string) {
 export function RidesTable({
 	rides,
 	onRowSelectionChange,
-	onAmountChange,
-	onAmountRevert,
 	rowSelection,
 	onSortingChange,
 	sorting,
 }: RidesTableProps) {
-	const [editingRideId, setEditingRideId] = useState<string | null>(null);
-	const inputRef = useRef<HTMLInputElement>(null);
-
-	// Focus the input when editing starts
-	useEffect(() => {
-		if (editingRideId && inputRef.current) {
-			inputRef.current.focus();
-		}
-	}, [editingRideId]);
-
-	const handleSaveAmount = useCallback(
-		(rideId: string, currentAmount: number) => {
-			if (inputRef.current) {
-				const newAmount = Number.parseFloat(inputRef.current.value);
-				// Only save if the value is valid, positive, and different from current
-				if (
-					!Number.isNaN(newAmount) &&
-					newAmount > 0 &&
-					newAmount !== currentAmount
-				) {
-					onAmountChange(rideId, newAmount);
-				}
-			}
-			setEditingRideId(null);
-		},
-		[onAmountChange],
-	);
-
 	const columns = useMemo<ColumnDef<TransformedRide>[]>(
 		() => [
 			{
@@ -263,10 +228,6 @@ export function RidesTable({
 				cell: ({ row }) => {
 					const amount = row.getValue("totalAmount") as number;
 					const currency = row.original.currency;
-					const rideId = row.original.rideId;
-					const originalAmount = row.original.originalAmount;
-					const isEdited = originalAmount !== undefined;
-					const isEditing = editingRideId === rideId;
 					const currencySymbol =
 						currency === "INR"
 							? "₹"
@@ -278,61 +239,16 @@ export function RidesTable({
 
 					return (
 						<div className="flex items-center justify-end gap-2">
-							{isEditing ? (
-								<>
-									<span className="text-sm">{currencySymbol}</span>
-									<Input
-										ref={inputRef}
-										type="number"
-										step="0.01"
-										defaultValue={amount.toFixed(2)}
-										onBlur={() => handleSaveAmount(rideId, amount)}
-										onClick={(e) => e.stopPropagation()}
-										onKeyDown={(e) => {
-											if (e.key === "Enter") {
-												handleSaveAmount(rideId, amount);
-											} else if (e.key === "Escape") {
-												setEditingRideId(null);
-											}
-										}}
-										className="w-24 text-right text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-									/>
-								</>
-							) : (
-								<>
-									<button
-										type="button"
-										className="text-right font-medium hover:text-primary"
-										onClick={(e) => {
-											e.stopPropagation();
-											setEditingRideId(rideId);
-										}}
-									>
-										{currencySymbol}
-										{amount.toFixed(2)}
-									</button>
-									{isEdited && (
-										<Button
-											size="sm"
-											variant="ghost"
-											className="h-6 w-6 p-0"
-											onClick={(e) => {
-												e.stopPropagation();
-												onAmountRevert(rideId);
-											}}
-											title="Revert to original amount"
-										>
-											<RotateCcw className="h-3 w-3" />
-										</Button>
-									)}
-								</>
-							)}
+							<span className="text-right font-medium">
+								{currencySymbol}
+								{amount.toFixed(2)}
+							</span>
 						</div>
 					);
 				},
 			},
 		],
-		[editingRideId, handleSaveAmount, onAmountRevert],
+		[],
 	);
 
 	const table = useReactTable({

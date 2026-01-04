@@ -148,39 +148,6 @@ function UberReceiptsDashboard() {
 		setHasSearched(false);
 	};
 
-	// Handle amount change
-	const handleAmountChange = useCallback(
-		(rideId: string, newAmount: number) => {
-			setRides((prevRides) =>
-				prevRides.map((ride) =>
-					ride.rideId === rideId
-						? {
-								...ride,
-								originalAmount: ride.originalAmount ?? ride.totalAmount,
-								totalAmount: newAmount,
-							}
-						: ride,
-				),
-			);
-		},
-		[],
-	);
-
-	// Handle amount revert
-	const handleAmountRevert = useCallback((rideId: string) => {
-		setRides((prevRides) =>
-			prevRides.map((ride) =>
-				ride.rideId === rideId && ride.originalAmount !== undefined
-					? {
-							...ride,
-							totalAmount: ride.originalAmount,
-							originalAmount: undefined,
-						}
-					: ride,
-			),
-		);
-	}, []);
-
 	// Fetch all rides within date range
 	const handleFetchRides = useCallback(async () => {
 		if (!auth || !dateRange.from) return;
@@ -665,8 +632,6 @@ function UberReceiptsDashboard() {
 									onRowSelectionChange={setRowSelection}
 									sorting={sorting}
 									onSortingChange={setSorting}
-									onAmountChange={handleAmountChange}
-									onAmountRevert={handleAmountRevert}
 								/>
 							)}
 						</CardContent>
