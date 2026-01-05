@@ -143,7 +143,14 @@ function UberReceiptsDashboard() {
 
 		// Convert date range to timestamps (milliseconds)
 		const startDate = startOfDay(dateRange.from);
-		const endDate = dateRange.to ? startOfDay(dateRange.to) : new Date();
+		// For end date, use start of next day to include the entire selected day
+		const endDate = dateRange.to
+			? new Date(
+					dateRange.to.getFullYear(),
+					dateRange.to.getMonth(),
+					dateRange.to.getDate() + 1,
+				)
+			: new Date();
 		const startTimeMs = startDate.getTime();
 		const endTimeMs = endDate.getTime();
 
