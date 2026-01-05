@@ -228,14 +228,7 @@ export function RidesTable({
 				cell: ({ row }) => {
 					const amount = row.getValue("totalAmount") as number;
 					const currency = row.original.currency;
-					const currencySymbol =
-						currency === "INR"
-							? "₹"
-							: currency === "EUR"
-								? "€"
-								: currency === "GBP"
-									? "£"
-									: "$";
+					const currencySymbol = currency || "₹";
 
 					return (
 						<div className="flex items-center justify-end gap-2">

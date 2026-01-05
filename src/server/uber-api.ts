@@ -126,10 +126,10 @@ export const fetchActivities = createServerFn({ method: "POST" })
 							: 0;
 
 						// Determine currency from description
-						let currency = "USD";
-						if (activity.description.includes("₹")) currency = "INR";
-						else if (activity.description.includes("€")) currency = "EUR";
-						else if (activity.description.includes("£")) currency = "GBP";
+						let currency = "$";
+						if (activity.description.includes("₹")) currency = "₹";
+						else if (activity.description.includes("€")) currency = "€";
+						else if (activity.description.includes("£")) currency = "£";
 
 						// Parse date from subtitle (e.g., "16 Nov • 22:33")
 						// Add current year to make it parseable
@@ -229,10 +229,10 @@ export const fetchTripDetails = createServerFn({ method: "POST" })
 					: 0;
 
 				// Determine currency
-				let currency = "USD";
-				if (trip.fare.includes("₹")) currency = "INR";
-				else if (trip.fare.includes("€")) currency = "EUR";
-				else if (trip.fare.includes("£")) currency = "GBP";
+				let currency = "$";
+				if (trip.fare.includes("₹")) currency = "₹";
+				else if (trip.fare.includes("€")) currency = "€";
+				else if (trip.fare.includes("£")) currency = "£";
 
 				const vehicleInfo = getVehicleInfo(receipt.vehicleType);
 
@@ -299,10 +299,10 @@ export const fetchMultipleTripDetails = createServerFn({ method: "POST" })
 							: 0;
 
 						// Determine currency
-						let currency = "USD";
-						if (trip.fare.includes("₹")) currency = "INR";
-						else if (trip.fare.includes("€")) currency = "EUR";
-						else if (trip.fare.includes("£")) currency = "GBP";
+						let currency = "$";
+						if (trip.fare.includes("₹")) currency = "₹";
+						else if (trip.fare.includes("€")) currency = "€";
+						else if (trip.fare.includes("£")) currency = "£";
 
 						const vehicleInfo = getVehicleInfo(receipt.vehicleType);
 

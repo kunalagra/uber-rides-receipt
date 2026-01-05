@@ -105,7 +105,7 @@ function UberReceiptsDashboard() {
 		return {
 			selectedCount: selectedRides.length,
 			totalAmount,
-			currency: selectedRides[0]?.currency || "INR",
+			currency: selectedRides[0]?.currency || "₹",
 			rides: selectedRides,
 		};
 	}, [filteredRides, rowSelection]);
