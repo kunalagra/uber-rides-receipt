@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
-import { format, startOfDay, startOfMonth } from "date-fns";
+import { endOfDay, format, startOfDay, startOfMonth } from "date-fns";
 import { Calendar, Car, Filter, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthSetupModal } from "@/components/AuthSetupModal";
@@ -143,14 +143,8 @@ function UberReceiptsDashboard() {
 
 		// Convert date range to timestamps (milliseconds)
 		const startDate = startOfDay(dateRange.from);
-		// For end date, use start of next day to include the entire selected day
-		const endDate = dateRange.to
-			? new Date(
-					dateRange.to.getFullYear(),
-					dateRange.to.getMonth(),
-					dateRange.to.getDate() + 1,
-				)
-			: new Date();
+		// For end date, use end of the day to include the entire selected day
+		const endDate = endOfDay(dateRange.to ?? new Date());
 		const startTimeMs = startDate.getTime();
 		const endTimeMs = endDate.getTime();
 
