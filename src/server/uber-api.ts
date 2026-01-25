@@ -18,6 +18,19 @@ import type {
 const UBER_GRAPHQL_URL = "https://riders.uber.com/graphql";
 
 /**
+ * Custom error class to include HTTP status code
+ */
+class UberAPIError extends Error {
+	constructor(
+		public status: number,
+		message: string,
+	) {
+		super(message);
+		this.name = "UberAPIError";
+	}
+}
+
+/**
  * Makes a GraphQL request to Uber's API
  */
 async function uberGraphQL<T>(
@@ -38,7 +51,8 @@ async function uberGraphQL<T>(
 	});
 
 	if (!response.ok) {
-		throw new Error(
+		throw new UberAPIError(
+			response.status,
 			`Uber API error: ${response.status} ${response.statusText}`,
 		);
 	}
@@ -59,7 +73,11 @@ export const fetchCurrentUser = createServerFn({ method: "POST" })
 	.handler(
 		async ({
 			data,
-		}): Promise<{ user: UberCurrentUser | null; error?: string }> => {
+		}): Promise<{
+			user: UberCurrentUser | null;
+			error?: string;
+			status?: number;
+		}> => {
 			try {
 				const response = await uberGraphQL<{
 					data: { currentUser: UberCurrentUser };
@@ -67,9 +85,11 @@ export const fetchCurrentUser = createServerFn({ method: "POST" })
 				return { user: response.data.currentUser };
 			} catch (error) {
 				console.error("Failed to fetch current user:", error);
+				const status = error instanceof UberAPIError ? error.status : undefined;
 				return {
 					user: null,
 					error: error instanceof Error ? error.message : "Unknown error",
+					status,
 				};
 			}
 		},

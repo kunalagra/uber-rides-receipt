@@ -49,10 +49,17 @@ export function AuthSetupModal({
 			const result = await fetchCurrentUser({ data: { auth } });
 
 			if (result.error || !result.user) {
-				setError(
-					result.error ||
-						"Failed to authenticate. Please check your credentials.",
-				);
+				// Check if it's a 404 (authentication failed)
+				if (result.status === 404) {
+					setError(
+						"Authentication failed. Your cookie may be invalid or expired. Please get a fresh cookie from Uber.",
+					);
+				} else {
+					setError(
+						result.error ||
+							"Failed to authenticate. Please check your credentials.",
+					);
+				}
 				return;
 			}
 

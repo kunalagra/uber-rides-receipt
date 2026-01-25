@@ -85,6 +85,12 @@ function UberReceiptsDashboard() {
 				fetchCurrentUser({ data: { auth: parsedAuth } }).then((result) => {
 					if (result.user) {
 						setUser(result.user);
+					} else if (result.status === 404) {
+						// 404 means cookie has expired - auto logout
+						console.log("Session expired (404), logging out...");
+						localStorage.removeItem("uber_auth");
+						setAuth(null);
+						setUser(null);
 					}
 				});
 			} catch {
