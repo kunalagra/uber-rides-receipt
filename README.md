@@ -78,7 +78,7 @@ This software uses the following open-source packages:
 - [TanStack Router](https://tanstack.com/router)
 - [TanStack Query](https://tanstack.com/query)
 - [Tailwind CSS](https://tailwindcss.com/)
-- [Radix UI](https://www.radix-ui.com/)
+- [Base UI](https://base-ui.com/)
 
 ## License
 
