@@ -6,7 +6,6 @@ import {
 	User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -45,83 +44,93 @@ export function SelectionSummary({
 	const hasSelection = summary.selectedCount > 0;
 
 	return (
-		<Card className="p-4">
-			<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-				<div className="flex items-center gap-6">
-					{userName && (
-						<>
-							<div className="flex flex-col">
-								<span className="text-sm text-muted-foreground">Account</span>
-								<span className="text-lg font-medium flex items-center gap-1">
-									<User className="h-4 w-4" />
-									{userName}
-								</span>
-							</div>
-							<Separator
-								orientation="vertical"
-								className="h-12 hidden sm:block"
-							/>
-						</>
-					)}
-					<div className="flex flex-col">
-						<span className="text-sm text-muted-foreground">Selected</span>
-						<span className="text-2xl font-bold">
-							{summary.selectedCount}{" "}
-							{summary.selectedCount === 1 ? "ride" : "rides"}
-						</span>
+		<div
+			className={`fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm transition-all duration-300 ${hasSelection
+					? "translate-y-0 opacity-100"
+					: "translate-y-full opacity-0 pointer-events-none"
+				}`}
+		>
+			<div className="container mx-auto max-w-6xl px-4 py-3">
+				<div className="flex items-center justify-between gap-4">
+					<div className="flex items-center gap-6">
+						{userName && (
+							<>
+								<div className="flex items-center gap-1.5 text-sm">
+									<User className="h-3.5 w-3.5 text-muted-foreground" />
+									<span className="font-medium">{userName}</span>
+								</div>
+								<Separator
+									orientation="vertical"
+									className="h-6 hidden sm:block"
+								/>
+							</>
+						)}
+						<div className="flex items-center gap-1.5">
+							<span className="text-2xl font-bold">
+								{summary.selectedCount}
+							</span>
+							<span className="text-sm text-muted-foreground">
+								{summary.selectedCount === 1 ? "ride" : "rides"} selected
+							</span>
+						</div>
+						<Separator
+							orientation="vertical"
+							className="h-6 hidden sm:block"
+						/>
+						<div className="flex items-center gap-1.5">
+							<span className="text-2xl font-bold">
+								{summary.currency} {summary.totalAmount.toFixed(2)}
+							</span>
+							<span className="text-sm text-muted-foreground hidden sm:inline">
+								total
+							</span>
+						</div>
 					</div>
-					<Separator orientation="vertical" className="h-12 hidden sm:block" />
-					<div className="flex flex-col">
-						<span className="text-sm text-muted-foreground">Total Amount</span>
-						<span className="text-2xl font-bold">
-							{summary.currency} {summary.totalAmount.toFixed(2)}
-						</span>
-					</div>
-				</div>
 
-				<div className="flex items-center w-full sm:w-auto">
-					<div className="flex items-center flex-1 sm:flex-none">
-						<Button
-							onClick={onDownloadReport}
-							disabled={!hasSelection || isLoading}
-							className="flex-1 sm:flex-none rounded-r-none border-r-0"
-						>
-							<Download className="mr-2 h-4 w-4" />
-							{isLoading ? "Downloading..." : "Download Report"}
-						</Button>
+					<div className="flex items-center">
+						<div className="flex items-center">
+							<Button
+								onClick={onDownloadReport}
+								disabled={!hasSelection || isLoading}
+								className="rounded-r-none border-r-0"
+							>
+								<Download className="mr-2 h-4 w-4" />
+								{isLoading ? "Downloading..." : "Download Report"}
+							</Button>
 
-						<DropdownMenu>
-							<DropdownMenuTrigger
-								render={(props) => (
-									<Button
-										{...props}
-										variant="default"
-										disabled={!hasSelection || isLoading}
-										className="rounded-l-none px-3"
-									>
-										<MoreVertical className="h-4 w-4" />
-										<span className="sr-only">More options</span>
-									</Button>
-								)}
-							/>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem onClick={onDownloadInvoices}>
-									<Download className="mr-2 h-4 w-4" />
-									Download Invoices
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={onDownloadSummaryPdf}>
-									<FileText className="mr-2 h-4 w-4" />
-									PDF Summary
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={onDownloadCsv}>
-									<FileSpreadsheet className="mr-2 h-4 w-4" />
-									CSV Summary
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+							<DropdownMenu>
+								<DropdownMenuTrigger
+									render={(props) => (
+										<Button
+											{...props}
+											variant="default"
+											disabled={!hasSelection || isLoading}
+											className="rounded-l-none px-3"
+										>
+											<MoreVertical className="h-4 w-4" />
+											<span className="sr-only">More options</span>
+										</Button>
+									)}
+								/>
+								<DropdownMenuContent align="end" side="top">
+									<DropdownMenuItem onClick={onDownloadInvoices}>
+										<Download className="mr-2 h-4 w-4" />
+										Download Invoices
+									</DropdownMenuItem>
+									<DropdownMenuItem onClick={onDownloadSummaryPdf}>
+										<FileText className="mr-2 h-4 w-4" />
+										PDF Summary
+									</DropdownMenuItem>
+									<DropdownMenuItem onClick={onDownloadCsv}>
+										<FileSpreadsheet className="mr-2 h-4 w-4" />
+										CSV Summary
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</div>
 					</div>
 				</div>
 			</div>
-		</Card>
+		</div>
 	);
 }

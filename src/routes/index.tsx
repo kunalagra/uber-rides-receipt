@@ -1,22 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { endOfDay, format, startOfDay, startOfMonth } from "date-fns";
-import { Calendar, Car, Filter, Loader2, RefreshCw } from "lucide-react";
+import { Calendar, Car, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthSetupModal } from "@/components/AuthSetupModal";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { Navbar } from "@/components/Navbar";
 import { RidesTable } from "@/components/RidesTable";
 import { SelectionSummary } from "@/components/SelectionSummary";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { downloadBlob, generateCsv, generateSummaryPdf } from "@/lib/pdf-utils";
 import {
 	fetchActivities,
@@ -452,7 +447,7 @@ function UberReceiptsDashboard() {
 				onOpenChange={setAuthModalOpen}
 			/>
 
-			<div className="container mx-auto px-4 py-6 max-w-6xl">
+			<div className="container mx-auto px-4 py-6 pb-24 max-w-6xl">
 				{/* Fetch Rides Section */}
 				{auth && (
 					<Card className="mb-6">
@@ -504,112 +499,23 @@ function UberReceiptsDashboard() {
 					</Card>
 				)}
 
-				{/* Selection Summary (shown when rides are loaded) */}
-				{hasSearched && filteredRides.length > 0 && (
-					<div className="mb-6">
-						<SelectionSummary
-							summary={summary}
-							isLoading={isDownloading}
-							userName={user ? `${user.firstName} ${user.lastName}` : undefined}
-							onDownloadReport={handleDownloadReport}
-							onDownloadInvoices={handleDownloadInvoices}
-							onDownloadSummaryPdf={handleDownloadSummaryPdf}
-							onDownloadCsv={handleDownloadCsv}
-						/>
-					</div>
-				)}
-
 				{/* Rides Table */}
 				{hasSearched && (
 					<Card>
-						<CardHeader>
-							<CardTitle className="text-lg flex items-center justify-between">
-								<div className="flex items-center gap-3">
-									<span>
-										Rides{" "}
-										{filteredRides.length > 0 && (
-											<span className="text-muted-foreground font-normal">
-												({filteredRides.length}
-												{filteredRides.length !== rides.length &&
-													` of ${rides.length}`}
-												)
-											</span>
-										)}
-									</span>
-									{/* Status Filter */}
-									<DropdownMenu>
-										<DropdownMenuTrigger
-											render={(props) => (
-												<Button
-													{...props}
-													variant="outline"
-													size="sm"
-													className="gap-1"
-												>
-													<Filter className="h-3 w-3" />
-													<Badge
-														variant={
-															statusFilter === "COMPLETED"
-																? "default"
-																: "secondary"
-														}
-														className="ml-1"
-													>
-														{statusFilter === "COMPLETED" ? "Completed" : "All"}
-													</Badge>
-												</Button>
-											)}
-										/>
-										<DropdownMenuContent align="start">
-											<DropdownMenuItem
-												onClick={() => setStatusFilter("COMPLETED")}
-											>
-												Completed Only
-											</DropdownMenuItem>
-											<DropdownMenuItem onClick={() => setStatusFilter("all")}>
-												All Rides
-											</DropdownMenuItem>
-										</DropdownMenuContent>
-									</DropdownMenu>
-								</div>
-								{filteredRides.length > 0 && (
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => {
-											const allSelected =
-												Object.keys(rowSelection).length ===
-												filteredRides.length;
-											if (allSelected) {
-												setRowSelection({});
-											} else {
-												const newSelection: RowSelectionState = {};
-												for (const ride of filteredRides) {
-													newSelection[ride.rideId] = true;
-												}
-												setRowSelection(newSelection);
-											}
-										}}
-									>
-										{Object.keys(rowSelection).length === filteredRides.length
-											? "Deselect All"
-											: "Select All"}
-									</Button>
-								)}
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
+						<CardContent className="pt-6">
 							{isLoadingRides && rides.length === 0 ? (
 								<div className="flex items-center justify-center h-48">
 									<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
 								</div>
 							) : (
 								<RidesTable
-									rides={filteredRides}
+									rides={rides}
 									rowSelection={rowSelection}
 									onRowSelectionChange={setRowSelection}
 									sorting={sorting}
 									onSortingChange={setSorting}
+									statusFilter={statusFilter}
+									onStatusFilterChange={setStatusFilter}
 								/>
 							)}
 						</CardContent>
@@ -648,6 +554,19 @@ function UberReceiptsDashboard() {
 					</Card>
 				)}
 			</div>
+
+			{/* Sticky Bottom Action Bar */}
+			{hasSearched && (
+				<SelectionSummary
+					summary={summary}
+					isLoading={isDownloading}
+					userName={user ? `${user.firstName} ${user.lastName}` : undefined}
+					onDownloadReport={handleDownloadReport}
+					onDownloadInvoices={handleDownloadInvoices}
+					onDownloadSummaryPdf={handleDownloadSummaryPdf}
+					onDownloadCsv={handleDownloadCsv}
+				/>
+			)}
 		</div>
 	);
 }
