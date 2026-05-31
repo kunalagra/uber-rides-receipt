@@ -49,7 +49,10 @@ function decodeJwtPayload(segment: string): Record<string, unknown> | null {
  * pasted straight from an Authorization header is normalized to the raw JWT.
  */
 export function stripBearerPrefix(token: string): string {
-	return token.trim().replace(/^Bearer\s+/i, "").trim();
+	return token
+		.trim()
+		.replace(/^Bearer\s+/i, "")
+		.trim();
 }
 
 /**
