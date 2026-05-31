@@ -1,4 +1,5 @@
 import {
+	Ban,
 	Download,
 	FileSpreadsheet,
 	FileText,
@@ -10,6 +11,7 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +28,10 @@ interface SelectionSummaryProps {
 	summary: RidesSummary;
 	isLoading: boolean;
 	userName?: string;
+	/** Active provider's display name, used in capability labels. */
+	providerName: string;
+	/** Whether the active provider exposes per-ride receipt PDFs. */
+	supportsReceiptPdf: boolean;
 	onDownloadReport: () => void;
 	onDownloadInvoices: () => void;
 	onDownloadSummaryPdf: () => void;
@@ -36,19 +42,29 @@ export function SelectionSummary({
 	summary,
 	isLoading,
 	userName,
+	providerName,
+	supportsReceiptPdf,
 	onDownloadReport,
 	onDownloadInvoices,
 	onDownloadSummaryPdf,
 	onDownloadCsv,
 }: SelectionSummaryProps) {
 	const hasSelection = summary.selectedCount > 0;
+	// Providers without receipt PDFs (e.g. Rapido) can only export a summary.
+	const primaryAction = supportsReceiptPdf
+		? onDownloadReport
+		: onDownloadSummaryPdf;
+	const primaryLabel = supportsReceiptPdf
+		? "Download Report"
+		: "Download Summary";
 
 	return (
 		<div
-			className={`fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm transition-all duration-300 ${hasSelection
+			className={`fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm transition-all duration-300 ${
+				hasSelection
 					? "translate-y-0 opacity-100"
 					: "translate-y-full opacity-0 pointer-events-none"
-				}`}
+			}`}
 		>
 			<div className="container mx-auto max-w-6xl px-4 py-3">
 				<div className="flex items-center justify-between gap-4">
@@ -73,10 +89,7 @@ export function SelectionSummary({
 								{summary.selectedCount === 1 ? "ride" : "rides"} selected
 							</span>
 						</div>
-						<Separator
-							orientation="vertical"
-							className="h-6 hidden sm:block"
-						/>
+						<Separator orientation="vertical" className="h-6 hidden sm:block" />
 						<div className="flex items-center gap-1.5">
 							<span className="text-2xl font-bold">
 								{summary.currency} {summary.totalAmount.toFixed(2)}
@@ -90,12 +103,12 @@ export function SelectionSummary({
 					<div className="flex items-center">
 						<div className="flex items-center">
 							<Button
-								onClick={onDownloadReport}
+								onClick={primaryAction}
 								disabled={!hasSelection || isLoading}
 								className="rounded-r-none border-r-0"
 							>
 								<Download className="mr-2 h-4 w-4" />
-								{isLoading ? "Downloading..." : "Download Report"}
+								{isLoading ? "Downloading..." : primaryLabel}
 							</Button>
 
 							<DropdownMenu>
@@ -113,14 +126,26 @@ export function SelectionSummary({
 									)}
 								/>
 								<DropdownMenuContent align="end" side="top">
-									<DropdownMenuItem onClick={onDownloadInvoices}>
-										<Download className="mr-2 h-4 w-4" />
-										Download Invoices
-									</DropdownMenuItem>
-									<DropdownMenuItem onClick={onDownloadSummaryPdf}>
-										<FileText className="mr-2 h-4 w-4" />
-										PDF Summary
-									</DropdownMenuItem>
+									{supportsReceiptPdf ? (
+										<>
+											<DropdownMenuItem onClick={onDownloadInvoices}>
+												<Download className="mr-2 h-4 w-4" />
+												Download Invoices
+											</DropdownMenuItem>
+											<DropdownMenuItem onClick={onDownloadSummaryPdf}>
+												<FileText className="mr-2 h-4 w-4" />
+												PDF Summary
+											</DropdownMenuItem>
+										</>
+									) : (
+										<>
+											<DropdownMenuItem disabled>
+												<Ban className="mr-2 h-4 w-4" />
+												Invoices not available for {providerName}
+											</DropdownMenuItem>
+											<DropdownMenuSeparator />
+										</>
+									)}
 									<DropdownMenuItem onClick={onDownloadCsv}>
 										<FileSpreadsheet className="mr-2 h-4 w-4" />
 										CSV Summary

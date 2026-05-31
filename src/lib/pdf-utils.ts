@@ -103,6 +103,7 @@ export async function generateSummaryPdf(
 	summary: RidesSummary,
 	accountName?: string,
 	pdfDataArray?: { rideId: string; pdfBase64: string }[],
+	title = "Expense Summary",
 ): Promise<Uint8Array> {
 	// Use landscape orientation for more space
 	const doc = new jsPDF({ orientation: "landscape" });
@@ -124,7 +125,7 @@ export async function generateSummaryPdf(
 	// Title
 	doc.setFont("GoogleSansFlex", "normal");
 	doc.setFontSize(24);
-	doc.text("Uber Expense Summary", 14, 25);
+	doc.text(title, 14, 25);
 
 	// Account name (left) and Generated date (right) on same line
 	let yPos = 33;

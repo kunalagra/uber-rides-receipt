@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
-import { endOfDay, format, startOfDay, startOfMonth } from "date-fns";
-import { Calendar, Car, Loader2, RefreshCw } from "lucide-react";
+import { format, startOfMonth } from "date-fns";
+import { Calendar, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthSetupModal } from "@/components/AuthSetupModal";
 import { DateRangePicker } from "@/components/DateRangePicker";
@@ -11,30 +11,35 @@ import { SelectionSummary } from "@/components/SelectionSummary";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 import { downloadBlob, generateCsv, generateSummaryPdf } from "@/lib/pdf-utils";
 import {
-	fetchActivities,
-	fetchCurrentUser,
-	fetchMultipleReceiptPdfs,
-	fetchMultipleTripDetails,
-} from "@/server/uber-api";
-import type { DateRange } from "@/types/rides";
+	DEFAULT_PROVIDER_ID,
+	getProvider,
+	loadSelectedProviderId,
+	PROVIDER_LIST,
+	saveSelectedProviderId,
+} from "@/providers/registry";
 import type {
-	TransformedRide,
-	UberAuthCredentials,
-	UberCurrentUser,
-} from "@/types/uber-api";
+	NormalizedRide,
+	ProviderId,
+	ProviderUser,
+} from "@/providers/types";
+import type { DateRange } from "@/types/rides";
 
-export const Route = createFileRoute("/")({ component: UberReceiptsDashboard });
+export const Route = createFileRoute("/")({ component: ReceiptsDashboard });
 
-function UberReceiptsDashboard() {
-	// Auth state
-	const [auth, setAuth] = useState<UberAuthCredentials | null>(null);
-	const [user, setUser] = useState<UberCurrentUser | null>(null);
+function ReceiptsDashboard() {
+	// Provider state
+	const [providerId, setProviderId] = useState<ProviderId>(DEFAULT_PROVIDER_ID);
+	const provider = getProvider(providerId);
+
+	// Auth state (auth is provider-specific, opaque here)
+	const [auth, setAuth] = useState<unknown>(null);
+	const [user, setUser] = useState<ProviderUser | null>(null);
+	const isAuthenticated = auth != null;
 
 	// Rides data state
-	const [rides, setRides] = useState<TransformedRide[]>([]);
+	const [rides, setRides] = useState<NormalizedRide[]>([]);
 	const [isLoadingRides, setIsLoadingRides] = useState(false);
 	const [hasSearched, setHasSearched] = useState(false);
 
@@ -56,43 +61,58 @@ function UberReceiptsDashboard() {
 		to: new Date(),
 	});
 
-	// Fetch progress state
+	// Fetch progress / download state
 	const [fetchProgress, setFetchProgress] = useState<string>("");
-
-	// Download state
 	const [isDownloading, setIsDownloading] = useState(false);
+
+	// Reset all ride/selection state (used on provider switch + auth change)
+	const resetRideState = useCallback(() => {
+		setRides([]);
+		setRowSelection({});
+		setHasSearched(false);
+		setFetchProgress("");
+	}, []);
+
+	// Restore a provider's stored session (auth + user) on load / switch
+	const restoreSession = useCallback(async (id: ProviderId) => {
+		const desc = getProvider(id);
+		const stored = localStorage.getItem(desc.authStorageKey);
+		if (!stored) {
+			setAuth(null);
+			setUser(null);
+			return;
+		}
+		try {
+			const parsedAuth = JSON.parse(stored);
+			const result = await desc.restoreUser(parsedAuth);
+			if ("user" in result) {
+				setAuth(parsedAuth);
+				setUser(result.user);
+			} else {
+				// Invalid/expired credentials → clear this provider's session
+				localStorage.removeItem(desc.authStorageKey);
+				setAuth(null);
+				setUser(null);
+			}
+		} catch {
+			localStorage.removeItem(desc.authStorageKey);
+			setAuth(null);
+			setUser(null);
+		}
+	}, []);
+
+	// On mount: pick last-used provider and restore its session
+	useEffect(() => {
+		const id = loadSelectedProviderId();
+		setProviderId(id);
+		restoreSession(id);
+	}, [restoreSession]);
 
 	// Filter rides by status
 	const filteredRides = useMemo(() => {
 		if (statusFilter === "all") return rides;
 		return rides.filter((ride) => ride.status === statusFilter);
 	}, [rides, statusFilter]);
-
-	// Load auth from localStorage on mount
-	useEffect(() => {
-		const storedAuth = localStorage.getItem("uber_auth");
-		if (storedAuth) {
-			try {
-				const parsedAuth = JSON.parse(storedAuth) as UberAuthCredentials;
-				setAuth(parsedAuth);
-
-				// Fetch user info
-				fetchCurrentUser({ data: { auth: parsedAuth } }).then((result) => {
-					if (result.user) {
-						setUser(result.user);
-					} else if (result.status === 404) {
-						// 404 means cookie has expired - auto logout
-						console.log("Session expired (404), logging out...");
-						localStorage.removeItem("uber_auth");
-						setAuth(null);
-						setUser(null);
-					}
-				});
-			} catch {
-				localStorage.removeItem("uber_auth");
-			}
-		}
-	}, []);
 
 	// Calculate summary from selection
 	const summary = useMemo(() => {
@@ -106,31 +126,36 @@ function UberReceiptsDashboard() {
 		return {
 			selectedCount: selectedRides.length,
 			totalAmount,
-			currency: selectedRides[0]?.currency || "₹",
+			currency: selectedRides[0]?.currency || "INR",
 			rides: selectedRides,
 		};
 	}, [filteredRides, rowSelection]);
 
+	// Switch provider
+	const handleSelectProvider = useCallback(
+		(id: ProviderId) => {
+			if (id === providerId) return;
+			setProviderId(id);
+			saveSelectedProviderId(id);
+			resetRideState();
+			restoreSession(id);
+		},
+		[providerId, resetRideState, restoreSession],
+	);
+
 	// Handle auth success
-	const handleAuthSuccess = (
-		newAuth: UberAuthCredentials,
-		newUser: UberCurrentUser,
-	) => {
+	const handleAuthSuccess = (newAuth: unknown, newUser: ProviderUser) => {
 		setAuth(newAuth);
 		setUser(newUser);
-		setRides([]);
-		setRowSelection({});
-		setHasSearched(false);
+		resetRideState();
 	};
 
-	// Handle logout
+	// Handle logout (scoped to active provider)
 	const handleLogout = () => {
-		localStorage.removeItem("uber_auth");
+		localStorage.removeItem(provider.authStorageKey);
 		setAuth(null);
 		setUser(null);
-		setRides([]);
-		setRowSelection({});
-		setHasSearched(false);
+		resetRideState();
 	};
 
 	// Fetch all rides within date range
@@ -140,93 +165,15 @@ function UberReceiptsDashboard() {
 		setIsLoadingRides(true);
 		setRowSelection({});
 		setHasSearched(true);
-		setFetchProgress("Fetching activities...");
-
-		// Convert date range to timestamps (milliseconds)
-		const startDate = startOfDay(dateRange.from);
-		// For end date, use end of the day to include the entire selected day
-		const endDate = endOfDay(dateRange.to ?? new Date());
-		const startTimeMs = startDate.getTime();
-		const endTimeMs = endDate.getTime();
+		setFetchProgress("Fetching rides...");
 
 		try {
-			// Step 1: Fetch all activities with date range filter
-			const allActivities: TransformedRide[] = [];
-			let pageToken: string | undefined;
-			let pageCount = 0;
-
-			while (true) {
-				pageCount++;
-				setFetchProgress(
-					`Fetching activities (page ${pageCount}, ${allActivities.length} rides)...`,
-				);
-
-				const result = await fetchActivities({
-					data: {
-						auth,
-						limit: 50,
-						nextPageToken: pageToken,
-						startTimeMs,
-						endTimeMs,
-					},
-				});
-
-				if (result.error) {
-					console.error("Failed to fetch activities:", result.error);
-					break;
-				}
-
-				// Add all activities (API already filtered by date range)
-				allActivities.push(...result.activities);
-
-				// Check if there are more pages
-				if (!result.nextPageToken) {
-					break;
-				}
-				pageToken = result.nextPageToken;
-			}
-
-			setFetchProgress(
-				`Fetching trip details for ${allActivities.length} rides...`,
+			const fetched = await provider.fetchRides(
+				auth,
+				dateRange,
+				setFetchProgress,
 			);
-
-			// Step 2: Fetch detailed trip info for all activities
-			if (allActivities.length > 0) {
-				const tripUUIDs = allActivities.map((a) => a.rideId);
-
-				// Fetch in batches of 10 to avoid overwhelming the API
-				const batchSize = 10;
-				const enrichedRides: TransformedRide[] = [];
-
-				for (let i = 0; i < tripUUIDs.length; i += batchSize) {
-					const batch = tripUUIDs.slice(i, i + batchSize);
-					setFetchProgress(
-						`Fetching trip details (${Math.min(i + batchSize, tripUUIDs.length)}/${tripUUIDs.length})...`,
-					);
-
-					const detailsResult = await fetchMultipleTripDetails({
-						data: {
-							auth,
-							tripUUIDs: batch,
-						},
-					});
-
-					if (detailsResult.rides.length > 0) {
-						enrichedRides.push(...detailsResult.rides);
-					} else {
-						// Fall back to basic activities for this batch
-						const batchActivities = allActivities.filter((a) =>
-							batch.includes(a.rideId),
-						);
-						enrichedRides.push(...batchActivities);
-					}
-				}
-
-				setRides(enrichedRides);
-			} else {
-				setRides([]);
-			}
-
+			setRides(fetched);
 			setFetchProgress("");
 		} catch (error) {
 			console.error("Failed to fetch rides:", error);
@@ -234,27 +181,42 @@ function UberReceiptsDashboard() {
 		} finally {
 			setIsLoadingRides(false);
 		}
-	}, [auth, dateRange]);
+	}, [auth, dateRange, provider]);
 
-	// Download report handler (summary + all receipts)
+	const accountName = user
+		? `${user.firstName} ${user.lastName}`.trim()
+		: undefined;
+
+	const buildSummaryPayload = useCallback(
+		(ridesForPayload: NormalizedRide[]) => ({
+			selectedCount: ridesForPayload.length,
+			totalAmount: ridesForPayload.reduce((s, r) => s + r.totalAmount, 0),
+			currency: ridesForPayload[0]?.currency || summary.currency,
+			rides: ridesForPayload.map((r) => ({
+				rideId: r.rideId,
+				startTime: r.startTime,
+				endTime: r.endTime,
+				startLocation: r.startLocation,
+				endLocation: r.endLocation,
+				totalAmount: r.totalAmount,
+				currency: r.currency,
+				driverName: r.driverName,
+				vehicleType: r.vehicleType,
+				status: r.status,
+				invoiceUrl: "",
+			})),
+		}),
+		[summary.currency],
+	);
+
+	// Download report handler (summary + all receipts) — receiptPdf providers only
 	const handleDownloadReport = useCallback(async () => {
-		if (!auth || summary.selectedCount === 0) return;
+		if (!auth || summary.selectedCount === 0 || !provider.fetchReceiptPdfs)
+			return;
 
 		setIsDownloading(true);
-
 		try {
-			// Fetch all PDFs from server
-			const { pdfs } = await fetchMultipleReceiptPdfs({
-				data: {
-					auth,
-					trips: summary.rides.map((ride) => ({
-						tripUUID: ride.rideId,
-						isAutoRide: ride.isAutoRide,
-					})),
-				},
-			});
-
-			// Filter out failed PDFs
+			const pdfs = await provider.fetchReceiptPdfs(auth, summary.rides);
 			const validPdfs = pdfs.filter(
 				(pdf): pdf is { rideId: string; pdfBase64: string } =>
 					pdf.pdfBase64 !== null,
@@ -265,65 +227,35 @@ function UberReceiptsDashboard() {
 				return;
 			}
 
-			// Create summary for PDF cover
-			const pdfSummary = {
-				selectedCount: validPdfs.length,
-				totalAmount: summary.totalAmount,
-				currency: summary.currency,
-				rides: summary.rides.map((r) => ({
-					rideId: r.rideId,
-					startTime: r.startTime,
-					endTime: r.endTime,
-					startLocation: r.startLocation,
-					endLocation: r.endLocation,
-					totalAmount: r.totalAmount,
-					currency: r.currency,
-					driverName: r.driverName,
-					vehicleType: r.vehicleType,
-					status: r.status,
-					invoiceUrl: "",
-				})),
-			};
-
-			// Generate summary PDF with merged receipts
-			const accountName = user
-				? `${user.firstName} ${user.lastName}`
-				: undefined;
+			const pdfSummary = buildSummaryPayload(
+				summary.rides.filter((r) =>
+					validPdfs.some((p) => p.rideId === r.rideId),
+				),
+			);
 			const mergedPdf = await generateSummaryPdf(
 				pdfSummary,
 				accountName,
 				validPdfs,
+				`${provider.name} Expense Summary`,
 			);
 
-			// Trigger download
-			const filename = `uber_expenses_${format(new Date(), "yyyy-MM-dd")}.pdf`;
+			const filename = `${provider.id}_expenses_${format(new Date(), "yyyy-MM-dd")}.pdf`;
 			downloadBlob(mergedPdf, filename, "application/pdf");
 		} catch (error) {
 			console.error("Failed to download receipts:", error);
 		} finally {
 			setIsDownloading(false);
 		}
-	}, [auth, summary, user]);
+	}, [auth, summary, provider, accountName, buildSummaryPayload]);
 
-	// Download invoices handler (receipts only, no summary)
+	// Download invoices handler (receipts only, no summary) — receiptPdf providers only
 	const handleDownloadInvoices = useCallback(async () => {
-		if (!auth || summary.selectedCount === 0) return;
+		if (!auth || summary.selectedCount === 0 || !provider.fetchReceiptPdfs)
+			return;
 
 		setIsDownloading(true);
-
 		try {
-			// Fetch all PDFs from server
-			const { pdfs } = await fetchMultipleReceiptPdfs({
-				data: {
-					auth,
-					trips: summary.rides.map((ride) => ({
-						tripUUID: ride.rideId,
-						isAutoRide: ride.isAutoRide,
-					})),
-				},
-			});
-
-			// Filter out failed PDFs
+			const pdfs = await provider.fetchReceiptPdfs(auth, summary.rides);
 			const validPdfs = pdfs.filter(
 				(pdf): pdf is { rideId: string; pdfBase64: string } =>
 					pdf.pdfBase64 !== null,
@@ -334,10 +266,7 @@ function UberReceiptsDashboard() {
 				return;
 			}
 
-			// Import PDFDocument for merging
 			const { PDFDocument } = await import("pdf-lib");
-
-			// Merge all receipt PDFs without summary
 			const mergedPdf = await PDFDocument.create();
 
 			for (const pdfData of validPdfs) {
@@ -362,86 +291,53 @@ function UberReceiptsDashboard() {
 			}
 
 			const mergedPdfBytes = await mergedPdf.save();
-
-			// Trigger download
-			const filename = `uber_invoices_${format(new Date(), "yyyy-MM-dd")}.pdf`;
+			const filename = `${provider.id}_invoices_${format(new Date(), "yyyy-MM-dd")}.pdf`;
 			downloadBlob(mergedPdfBytes, filename, "application/pdf");
 		} catch (error) {
 			console.error("Failed to download invoices:", error);
 		} finally {
 			setIsDownloading(false);
 		}
-	}, [auth, summary]);
+	}, [auth, summary, provider]);
 
-	// Download summary PDF handler
+	// Download summary PDF handler (all providers)
 	const handleDownloadSummaryPdf = useCallback(async () => {
 		if (summary.selectedCount === 0) return;
-
-		const pdfSummary = {
-			selectedCount: summary.selectedCount,
-			totalAmount: summary.totalAmount,
-			currency: summary.currency,
-			rides: summary.rides.map((r) => ({
-				rideId: r.rideId,
-				startTime: r.startTime,
-				endTime: r.endTime,
-				startLocation: r.startLocation,
-				endLocation: r.endLocation,
-				totalAmount: r.totalAmount,
-				currency: r.currency,
-				driverName: r.driverName,
-				vehicleType: r.vehicleType,
-				status: r.status,
-				invoiceUrl: "",
-			})),
-		};
-
-		const accountName = user ? `${user.firstName} ${user.lastName}` : undefined;
-		const pdfBytes = await generateSummaryPdf(pdfSummary, accountName);
-		const filename = `uber_summary_${format(new Date(), "yyyy-MM-dd")}.pdf`;
+		const pdfSummary = buildSummaryPayload(summary.rides);
+		const pdfBytes = await generateSummaryPdf(
+			pdfSummary,
+			accountName,
+			undefined,
+			`${provider.name} Expense Summary`,
+		);
+		const filename = `${provider.id}_summary_${format(new Date(), "yyyy-MM-dd")}.pdf`;
 		downloadBlob(pdfBytes, filename, "application/pdf");
-	}, [summary, user]);
+	}, [summary, accountName, provider.id, provider.name, buildSummaryPayload]);
 
-	// Download CSV handler
+	// Download CSV handler (all providers)
 	const handleDownloadCsv = useCallback(() => {
 		if (summary.selectedCount === 0) return;
-
-		const csvSummary = {
-			selectedCount: summary.selectedCount,
-			totalAmount: summary.totalAmount,
-			currency: summary.currency,
-			rides: summary.rides.map((r) => ({
-				rideId: r.rideId,
-				startTime: r.startTime,
-				endTime: r.endTime,
-				startLocation: r.startLocation,
-				endLocation: r.endLocation,
-				totalAmount: r.totalAmount,
-				currency: r.currency,
-				driverName: r.driverName,
-				vehicleType: r.vehicleType,
-				status: r.status,
-				invoiceUrl: "",
-			})),
-		};
-
-		const csv = generateCsv(csvSummary);
-		const filename = `uber_expenses_${format(new Date(), "yyyy-MM-dd")}.csv`;
+		const csv = generateCsv(buildSummaryPayload(summary.rides));
+		const filename = `${provider.id}_expenses_${format(new Date(), "yyyy-MM-dd")}.csv`;
 		downloadBlob(csv, filename, "text/csv");
-	}, [summary]);
+	}, [summary, provider.id, buildSummaryPayload]);
+
+	const ProviderIcon = provider.icon;
 
 	return (
 		<div className="min-h-screen bg-background">
-			{/* Navbar */}
 			<Navbar
 				user={user}
-				isAuthenticated={!!auth}
+				isAuthenticated={isAuthenticated}
+				providers={PROVIDER_LIST}
+				selectedProviderId={providerId}
+				onSelectProvider={handleSelectProvider}
 				onOpenAuthModal={() => setAuthModalOpen(true)}
 				onLogout={handleLogout}
 			/>
 
-			{/* Auth Modal */}
 			<AuthSetupModal
+				provider={provider}
 				onAuthSuccess={handleAuthSuccess}
 				open={authModalOpen}
 				onOpenChange={setAuthModalOpen}
@@ -449,7 +345,7 @@ function UberReceiptsDashboard() {
 
 			<div className="container mx-auto px-4 py-6 pb-24 max-w-6xl">
 				{/* Fetch Rides Section */}
-				{auth && (
+				{isAuthenticated && (
 					<Card className="mb-6">
 						<CardHeader className="pb-4">
 							<CardTitle className="text-lg flex items-center gap-2">
@@ -523,32 +419,33 @@ function UberReceiptsDashboard() {
 				)}
 
 				{/* Empty State - Not Authenticated */}
-				{!auth && (
+				{!isAuthenticated && (
 					<Card>
 						<CardContent className="flex flex-col items-center justify-center py-16">
-							<Car className="h-16 w-16 text-muted-foreground mb-4" />
+							<ProviderIcon className="h-16 w-16 text-muted-foreground mb-4" />
 							<h3 className="text-xl font-semibold mb-2">
-								Connect Your Uber Account
+								Connect Your {provider.name} Account
 							</h3>
 							<p className="text-muted-foreground text-center max-w-md mb-6">
 								To view and download your ride receipts, you need to connect
-								your Uber account by providing your session cookies.
+								your {provider.name} account.
 							</p>
 							<Button onClick={() => setAuthModalOpen(true)}>
-								Connect Uber Account
+								Connect {provider.name} Account
 							</Button>
 						</CardContent>
 					</Card>
 				)}
 
 				{/* Empty State - Authenticated but no search */}
-				{auth && !hasSearched && (
+				{isAuthenticated && !hasSearched && (
 					<Card>
 						<CardContent className="flex flex-col items-center justify-center py-16">
-							<Car className="h-16 w-16 text-muted-foreground mb-4" />
+							<ProviderIcon className="h-16 w-16 text-muted-foreground mb-4" />
 							<h3 className="text-xl font-semibold mb-2">Ready to Fetch</h3>
 							<p className="text-muted-foreground text-center max-w-md">
-								Click "Fetch Ride History" above to load your recent Uber rides.
+								Select a date range above and click "Fetch Rides" to load your{" "}
+								{provider.name} ride history.
 							</p>
 						</CardContent>
 					</Card>
@@ -560,7 +457,9 @@ function UberReceiptsDashboard() {
 				<SelectionSummary
 					summary={summary}
 					isLoading={isDownloading}
-					userName={user ? `${user.firstName} ${user.lastName}` : undefined}
+					userName={accountName}
+					providerName={provider.name}
+					supportsReceiptPdf={provider.capabilities.receiptPdf}
 					onDownloadReport={handleDownloadReport}
 					onDownloadInvoices={handleDownloadInvoices}
 					onDownloadSummaryPdf={handleDownloadSummaryPdf}

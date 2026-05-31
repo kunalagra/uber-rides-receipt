@@ -1,4 +1,4 @@
-import { Car, Key, LogOut, Moon, MoreVertical, Sun, User } from "lucide-react";
+import { Key, LogOut, Moon, MoreVertical, Sun, User } from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,18 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { UberCurrentUser } from "@/types/uber-api";
+import type {
+	ProviderDescriptor,
+	ProviderId,
+	ProviderUser,
+} from "@/providers/types";
 
 interface NavbarProps {
-	user: UberCurrentUser | null;
+	user: ProviderUser | null;
 	isAuthenticated: boolean;
+	providers: ProviderDescriptor[];
+	selectedProviderId: ProviderId;
+	onSelectProvider: (id: ProviderId) => void;
 	onOpenAuthModal: () => void;
 	onLogout: () => void;
 }
@@ -23,6 +30,9 @@ interface NavbarProps {
 export function Navbar({
 	user,
 	isAuthenticated,
+	providers,
+	selectedProviderId,
+	onSelectProvider,
 	onOpenAuthModal,
 	onLogout,
 }: NavbarProps) {
@@ -52,12 +62,27 @@ export function Navbar({
 	return (
 		<nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
 			<div className="container mx-auto flex h-14 items-center justify-between px-4">
-				{/* Logo and Title */}
-				<div className="flex items-center gap-2">
-					<Car className="h-6 w-6 text-primary" />
-					<span className="font-semibold text-lg hidden sm:inline">
-						Uber Receipts
-					</span>
+				{/* Provider switcher */}
+				<div className="flex items-center gap-1 rounded-lg border bg-muted/30 p-1">
+					{providers.map((p) => {
+						const Icon = p.icon;
+						const isActive = p.id === selectedProviderId;
+						return (
+							<button
+								key={p.id}
+								type="button"
+								onClick={() => onSelectProvider(p.id)}
+								className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-medium transition-all ${
+									isActive
+										? "bg-background text-foreground shadow-sm"
+										: "text-muted-foreground hover:text-foreground"
+								}`}
+							>
+								<Icon className="h-4 w-4" />
+								<span className="hidden sm:inline">{p.name}</span>
+							</button>
+						);
+					})}
 				</div>
 
 				{/* Right side actions */}
@@ -131,7 +156,7 @@ export function Navbar({
 								) : (
 									<DropdownMenuItem onClick={onOpenAuthModal}>
 										<User className="mr-2 h-4 w-4" />
-										Connect Uber Account
+										Connect Account
 									</DropdownMenuItem>
 								)}
 							</DropdownMenuContent>

@@ -213,7 +213,9 @@ export function RidesTable({
 					<Checkbox
 						checked={
 							table.getFilteredRowModel().rows.length > 0 &&
-							table.getFilteredRowModel().rows.every((row) => row.getIsSelected())
+							table
+								.getFilteredRowModel()
+								.rows.every((row) => row.getIsSelected())
 						}
 						onCheckedChange={(value) => {
 							// Only toggle filtered rows
@@ -509,20 +511,22 @@ export function RidesTable({
 						<button
 							type="button"
 							onClick={() => onStatusFilterChange("COMPLETED")}
-							className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${statusFilter === "COMPLETED"
-								? "bg-background text-foreground shadow-sm"
-								: "text-muted-foreground hover:text-foreground"
-								}`}
+							className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+								statusFilter === "COMPLETED"
+									? "bg-background text-foreground shadow-sm"
+									: "text-muted-foreground hover:text-foreground"
+							}`}
 						>
 							Completed
 						</button>
 						<button
 							type="button"
 							onClick={() => onStatusFilterChange("all")}
-							className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${statusFilter === "all"
-								? "bg-background text-foreground shadow-sm"
-								: "text-muted-foreground hover:text-foreground"
-								}`}
+							className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+								statusFilter === "all"
+									? "bg-background text-foreground shadow-sm"
+									: "text-muted-foreground hover:text-foreground"
+							}`}
 						>
 							All
 						</button>
@@ -564,10 +568,11 @@ export function RidesTable({
 										key={type}
 										type="button"
 										onClick={() => toggleVehicleType(type)}
-										className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${isActive
-											? "bg-primary text-primary-foreground border-primary"
-											: "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
-											}`}
+										className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
+											isActive
+												? "bg-primary text-primary-foreground border-primary"
+												: "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
+										}`}
 									>
 										{getVehicleIcon(type)}
 										{type}
@@ -630,9 +635,9 @@ export function RidesTable({
 											{header.isPlaceholder
 												? null
 												: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+														header.column.columnDef.header,
+														header.getContext(),
+													)}
 										</TableHead>
 									);
 								})}
@@ -653,7 +658,10 @@ export function RidesTable({
 										if (cell.column.id === "status") return null;
 										return (
 											<TableCell key={cell.id}>
-												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+												{flexRender(
+													cell.column.columnDef.cell,
+													cell.getContext(),
+												)}
 											</TableCell>
 										);
 									})}

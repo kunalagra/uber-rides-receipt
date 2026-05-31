@@ -1,12 +1,12 @@
 <h1 align="center">
   <br>
-  <a href="https://uber-rides-receipt.vercel.app/"><img src="./public/screenshot.png" alt="Uber Rides Receipt" width="200"></a>
+  <a href="https://uber-rides-receipt.vercel.app/"><img src="./public/screenshot.png" alt="Uber/Rapido Rides Receipt" width="200"></a>
   <br>
-  Uber Rides Receipt
+  Uber/Rapido Rides Receipt
   <br>
 </h1>
 
-<h4 align="center">A small TypeScript + Vite web app for viewing and exporting Uber ride data and receipts.</h4>
+<h4 align="center">A small TypeScript + Vite web app for viewing and exporting ride data and receipts from multiple providers (Uber &amp; Rapido).</h4>
 
 <p align="center">
   <a href="#key-features">Key Features</a> •
@@ -17,6 +17,10 @@
 
 ## Key Features
 
+* **Multiple Providers**
+  - Switch between **Uber** and **Rapido** from the navbar
+  - Each provider keeps its own independent session
+  - Extensible provider registry — adding a new provider is a drop-in
 * **View Rides**
   - Interactive table of rides with filtering and sorting
   - Filter by date range, vehicle type, and status
@@ -24,15 +28,16 @@
   - Select custom date ranges to filter displayed rides
 * **Selection Summary**
   - Quick summary & totals for chosen rides
-  - Export selected rides to PDF
-* **PDF Export**
-  - Generate professional PDF receipts for your rides
-  - Bulk export multiple receipts at once
-* **Direct Uber API Integration**
-  - Fetch real-time ride data from your Uber account
-  - Uses secure session-based authentication
+  - Export selected rides to PDF / CSV
+* **Exports**
+  - Uber: bulk-merge official receipt PDFs, plus PDF/CSV summaries
+  - Rapido: PDF & CSV summaries (Rapido does not issue per-ride invoices,
+    so individual receipt PDFs are not available)
+* **Direct API Integration**
+  - Fetch real-time ride data straight from your account
+  - Uses secure, browser-local session credentials
 
-## How To Use
+## Local Dev
 
 To clone and run this application, you'll need [Git](https://git-scm.com) and [Bun](https://bun.sh) installed on your computer. From your command line:
 
@@ -50,15 +55,23 @@ $ bun install
 $ bun run dev
 ```
 
-> [!IMPORTANT]  
-> **Authentication Setup**: The app requires your Uber session cookie to fetch ride data.
+> [!IMPORTANT]
+> **Authentication Setup**: Pick a provider in the navbar, then connect its account.
+>
+> **Uber** — needs your session cookie:
 > 1. Log in to `riders.uber.com/trips` in your browser
 > 2. Open Developer Tools → Network tab
 > 3. Find any GraphQL request and copy the `cookie` header value
 > 4. Paste it into the app's authentication modal when prompted
+>
+> **Rapido** — needs your Bearer token:
+> 1. Log in to `m.rapido.bike/my-rides` in your browser
+> 2. Open Developer Tools → Network tab and refresh
+> 3. Click the `order` request and copy the `authorization` header value (the token after `Bearer`)
+> 4. Paste it into the authentication modal — the customer ID and profile are read from the token
 
 > [!NOTE]
-> **Security Warning**: Your session cookie provides full access to your Uber account. Never share or commit this value. The cookie is stored only in your browser's memory during the session.
+> **Security Warning**: These credentials provide full access to your ride account. Never share or commit them. They are stored only in your browser (localStorage) and sent only to the respective provider's API via the app's server functions.
 
 **Build & Preview**
 

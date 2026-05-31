@@ -1,5 +1,5 @@
 import { AlertCircle, Loader2 } from "lucide-react";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,30 +9,38 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchCurrentUser } from "@/server/uber-api";
-import type { UberAuthCredentials, UberCurrentUser } from "@/types/uber-api";
+import type { ProviderDescriptor, ProviderUser } from "@/providers/types";
 
 interface AuthSetupModalProps {
-	onAuthSuccess: (auth: UberAuthCredentials, user: UberCurrentUser) => void;
+	provider: ProviderDescriptor;
+	onAuthSuccess: (auth: unknown, user: ProviderUser) => void;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
 
 export function AuthSetupModal({
+	provider,
 	onAuthSuccess,
 	open,
 	onOpenChange,
 }: AuthSetupModalProps) {
-	const cookieId = useId();
-	const [cookie, setCookie] = useState("");
+	const [values, setValues] = useState<Record<string, string>>({});
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const setField = (key: string, value: string) => {
+		setValues((prev) => ({ ...prev, [key]: value }));
+	};
+
 	const handleSubmit = async () => {
-		if (!cookie.trim()) {
-			setError("Cookie is required");
+		const missing = provider.auth.fields.find(
+			(field) => !values[field.key]?.trim(),
+		);
+		if (missing) {
+			setError(`${missing.label} is required`);
 			return;
 		}
 
@@ -40,35 +48,20 @@ export function AuthSetupModal({
 		setError(null);
 
 		try {
-			const auth: UberAuthCredentials = {
-				cookie: cookie.trim(),
-				csrfToken: "x",
-			};
+			const result = await provider.connect(values);
 
-			// Test the credentials by fetching current user
-			const result = await fetchCurrentUser({ data: { auth } });
-
-			if (result.error || !result.user) {
-				// Check if it's a 404 (authentication failed)
-				if (result.status === 404) {
-					setError(
-						"Authentication failed. Your cookie may be invalid or expired. Please get a fresh cookie from Uber.",
-					);
-				} else {
-					setError(
-						result.error ||
-							"Failed to authenticate. Please check your credentials.",
-					);
-				}
+			if ("error" in result) {
+				setError(result.error);
 				return;
 			}
 
-			// Store auth in localStorage
-			localStorage.setItem("uber_auth", JSON.stringify(auth));
-
-			// Call success callback
-			onAuthSuccess(auth, result.user);
+			localStorage.setItem(
+				provider.authStorageKey,
+				JSON.stringify(result.auth),
+			);
+			onAuthSuccess(result.auth, result.user);
 			onOpenChange(false);
+			setValues({});
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Authentication failed");
 		} finally {
@@ -80,52 +73,41 @@ export function AuthSetupModal({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
-					<DialogTitle>Connect Your Uber Account</DialogTitle>
+					<DialogTitle>Connect Your {provider.name} Account</DialogTitle>
 					<DialogDescription>
-						To fetch your ride history, you need to provide your Uber session
-						cookies. Follow the instructions below.
+						To fetch your ride history, provide your {provider.name} session
+						credentials. Follow the instructions below.
 					</DialogDescription>
 				</DialogHeader>
 
 				<div className="space-y-4">
 					<Alert>
 						<AlertCircle className="h-4 w-4" />
-						<AlertDescription>
-							<strong>How to get your cookies:</strong>
-							<ol className="mt-2 ml-4 list-decimal space-y-1 text-sm">
-								<li>
-									Open{" "}
-									<a
-										href="https://riders.uber.com/trips"
-										target="_blank"
-										rel="noopener noreferrer"
-										className="underline text-primary"
-									>
-										riders.uber.com/trips
-									</a>{" "}
-									and log in
-								</li>
-								<li>Open Developer Tools (F12 or Cmd+Option+I)</li>
-								<li>Go to the Network tab</li>
-								<li>Refresh the page</li>
-								<li>
-									Click on any "graphql" request and copy the "cookie" header
-									value under the Request Header
-								</li>
-							</ol>
-						</AlertDescription>
+						<AlertDescription>{provider.auth.instructions}</AlertDescription>
 					</Alert>
 
-					<div className="space-y-2">
-						<Label htmlFor={cookieId}>Cookie Header</Label>
-						<Textarea
-							id={cookieId}
-							placeholder="Paste your cookie header value here..."
-							value={cookie}
-							onChange={(e) => setCookie(e.target.value)}
-							className="h-[120px] font-mono text-xs w-full resize-none overflow-y-auto overflow-x-hidden break-all"
-						/>
-					</div>
+					{provider.auth.fields.map((field) => (
+						<div key={field.key} className="space-y-2">
+							<Label htmlFor={`auth-${field.key}`}>{field.label}</Label>
+							{field.type === "textarea" ? (
+								<Textarea
+									id={`auth-${field.key}`}
+									placeholder={field.placeholder}
+									value={values[field.key] ?? ""}
+									onChange={(e) => setField(field.key, e.target.value)}
+									className="h-[120px] font-mono text-xs w-full resize-none overflow-y-auto overflow-x-hidden break-all"
+								/>
+							) : (
+								<Input
+									id={`auth-${field.key}`}
+									placeholder={field.placeholder}
+									value={values[field.key] ?? ""}
+									onChange={(e) => setField(field.key, e.target.value)}
+									className="font-mono text-xs"
+								/>
+							)}
+						</div>
+					))}
 
 					{error && (
 						<Alert variant="destructive">
