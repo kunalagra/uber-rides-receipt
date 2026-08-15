@@ -89,7 +89,7 @@ async function fetchOrderPage(
  * Validate a Rapido token and resolve the current user.
  */
 export const fetchRapidoUser = createServerFn({ method: "POST" })
-	.inputValidator((data: { auth: RapidoAuthCredentials }) => {
+	.validator((data: { auth: RapidoAuthCredentials }) => {
 		if (!data.auth?.token) {
 			throw new Error("Rapido token is required");
 		}
@@ -122,7 +122,7 @@ export const fetchRapidoUser = createServerFn({ method: "POST" })
  * is passed or all orders have been retrieved.
  */
 export const fetchRapidoOrders = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		(data: { auth: RapidoAuthCredentials; fromMs?: number; toMs?: number }) => {
 			if (!data.auth?.token) {
 				throw new Error("Rapido token is required");

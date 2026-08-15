@@ -3,12 +3,10 @@ import {
 	type ColumnFiltersState,
 	type FilterFn,
 	flexRender,
-	getCoreRowModel,
-	getFilteredRowModel,
-	getSortedRowModel,
+	stockFeatures,
 	type RowSelectionState,
 	type SortingState,
-	useReactTable,
+	useTable,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
 import {
@@ -73,7 +71,7 @@ function getVehicleIcon(vehicleType: string) {
 }
 
 // Custom global filter that searches across route, driver, and vehicle type
-const globalFilterFn: FilterFn<TransformedRide> = (
+const globalFilterFn: FilterFn<typeof stockFeatures, TransformedRide> = (
 	row,
 	_columnId,
 	filterValue,
@@ -172,8 +170,8 @@ export function RidesTable({
 	}, []);
 
 	// Vehicle type column filter
-	const vehicleTypeFilterFn: FilterFn<TransformedRide> = useCallback(
-		(row, _columnId, filterValue) => {
+	const vehicleTypeFilterFn: FilterFn<typeof stockFeatures, TransformedRide> =
+		useCallback((row, _columnId, filterValue) => {
 			const types = filterValue as string[];
 			if (!types || types.length === 0) return true;
 			return types.includes(row.original.vehicleType || "");
@@ -182,8 +180,8 @@ export function RidesTable({
 	);
 
 	// Amount range column filter
-	const amountRangeFilterFn: FilterFn<TransformedRide> = useCallback(
-		(row, _columnId, filterValue) => {
+	const amountRangeFilterFn: FilterFn<typeof stockFeatures, TransformedRide> =
+		useCallback((row, _columnId, filterValue) => {
 			const { min, max } = filterValue as {
 				min?: number;
 				max?: number;
@@ -197,15 +195,17 @@ export function RidesTable({
 	);
 
 	// Status column filter
-	const statusFilterFn: FilterFn<TransformedRide> = useCallback(
-		(row, _columnId, filterValue) => {
+	const statusFilterFn: FilterFn<typeof stockFeatures, TransformedRide> =
+		useCallback((row, _columnId, filterValue) => {
 			if (filterValue === "all") return true;
 			return row.original.status === filterValue;
 		},
 		[],
 	);
 
-	const columns = useMemo<ColumnDef<TransformedRide>[]>(
+	const columns = useMemo<
+		ColumnDef<typeof stockFeatures, TransformedRide, unknown>[]
+	>(
 		() => [
 			{
 				id: "select",
@@ -422,9 +422,10 @@ export function RidesTable({
 		],
 	);
 
-	const table = useReactTable({
+	const table = useTable({
 		data: rides,
 		columns,
+		features: stockFeatures,
 		state: {
 			rowSelection,
 			sorting,
@@ -443,9 +444,6 @@ export function RidesTable({
 			onSortingChange(newSorting);
 		},
 		globalFilterFn,
-		getCoreRowModel: getCoreRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
 		getRowId: (row) => row.rideId,
 	});
 

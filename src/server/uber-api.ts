@@ -64,7 +64,7 @@ async function uberGraphQL<T>(
  * Fetch current user info
  */
 export const fetchCurrentUser = createServerFn({ method: "POST" })
-	.inputValidator((data: { auth: UberAuthCredentials }) => {
+	.validator((data: { auth: UberAuthCredentials }) => {
 		if (!data.auth?.cookie || !data.auth?.csrfToken) {
 			throw new Error("Auth credentials are required");
 		}
@@ -99,7 +99,7 @@ export const fetchCurrentUser = createServerFn({ method: "POST" })
  * Fetch activities (rides) with pagination
  */
 export const fetchActivities = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		(data: {
 			auth: UberAuthCredentials;
 			limit?: number;
@@ -220,7 +220,7 @@ function getVehicleInfo(vehicleType: string): {
  * Fetch trip details
  */
 export const fetchTripDetails = createServerFn({ method: "POST" })
-	.inputValidator((data: { auth: UberAuthCredentials; tripUUID: string }) => {
+	.validator((data: { auth: UberAuthCredentials; tripUUID: string }) => {
 		if (!data.auth?.cookie || !data.auth?.csrfToken) {
 			throw new Error("Auth credentials are required");
 		}
@@ -286,7 +286,7 @@ export const fetchTripDetails = createServerFn({ method: "POST" })
  * Fetch multiple trip details in parallel
  */
 export const fetchMultipleTripDetails = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		(data: { auth: UberAuthCredentials; tripUUIDs: string[] }) => {
 			if (!data.auth?.cookie || !data.auth?.csrfToken) {
 				throw new Error("Auth credentials are required");
@@ -371,7 +371,7 @@ export const fetchMultipleTripDetails = createServerFn({ method: "POST" })
  * Fetch receipt PDF for a trip
  */
 export const fetchReceiptPdf = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		(data: {
 			auth: UberAuthCredentials;
 			tripUUID: string;
@@ -459,7 +459,7 @@ export const fetchReceiptPdf = createServerFn({ method: "POST" })
  * Fetch multiple receipt PDFs
  */
 export const fetchMultipleReceiptPdfs = createServerFn({ method: "POST" })
-	.inputValidator(
+	.validator(
 		(data: {
 			auth: UberAuthCredentials;
 			trips: Array<{ tripUUID: string; isAutoRide: boolean }>;
