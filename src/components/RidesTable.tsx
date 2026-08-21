@@ -1,11 +1,15 @@
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
+	createFilteredRowModel,
+	createSortedRowModel,
 	type FilterFn,
 	flexRender,
-	stockFeatures,
 	type RowSelectionState,
 	type SortingState,
+	sortFn_datetime,
+	stockFeatures,
+	tableFeatures,
 	useTable,
 } from "@tanstack/react-table";
 import { format } from "date-fns";
@@ -71,7 +75,7 @@ function getVehicleIcon(vehicleType: string) {
 }
 
 // Custom global filter that searches across route, driver, and vehicle type
-const globalFilterFn: FilterFn<typeof stockFeatures, TransformedRide> = (
+const globalFilterFn: FilterFn<typeof ridesTableFeatures, TransformedRide> = (
 	row,
 	_columnId,
 	filterValue,
@@ -91,6 +95,13 @@ const globalFilterFn: FilterFn<typeof stockFeatures, TransformedRide> = (
 		vehicle.includes(query)
 	);
 };
+
+const ridesTableFeatures = tableFeatures({
+	...stockFeatures,
+	filteredRowModel: createFilteredRowModel(),
+	sortedRowModel: createSortedRowModel(),
+	sortFns: { datetime: sortFn_datetime },
+});
 
 export function RidesTable({
 	rides,
@@ -170,41 +181,39 @@ export function RidesTable({
 	}, []);
 
 	// Vehicle type column filter
-	const vehicleTypeFilterFn: FilterFn<typeof stockFeatures, TransformedRide> =
-		useCallback((row, _columnId, filterValue) => {
-			const types = filterValue as string[];
-			if (!types || types.length === 0) return true;
-			return types.includes(row.original.vehicleType || "");
-		},
-		[],
-	);
+	const vehicleTypeFilterFn: FilterFn<
+		typeof ridesTableFeatures,
+		TransformedRide
+	> = useCallback((row, _columnId, filterValue) => {
+		const types = filterValue as string[];
+		if (!types || types.length === 0) return true;
+		return types.includes(row.original.vehicleType || "");
+	}, []);
 
 	// Amount range column filter
-	const amountRangeFilterFn: FilterFn<typeof stockFeatures, TransformedRide> =
-		useCallback((row, _columnId, filterValue) => {
-			const { min, max } = filterValue as {
-				min?: number;
-				max?: number;
-			};
-			const amount = row.original.totalAmount;
-			if (min !== undefined && amount < min) return false;
-			if (max !== undefined && amount > max) return false;
-			return true;
-		},
-		[],
-	);
+	const amountRangeFilterFn: FilterFn<
+		typeof ridesTableFeatures,
+		TransformedRide
+	> = useCallback((row, _columnId, filterValue) => {
+		const { min, max } = filterValue as {
+			min?: number;
+			max?: number;
+		};
+		const amount = row.original.totalAmount;
+		if (min !== undefined && amount < min) return false;
+		if (max !== undefined && amount > max) return false;
+		return true;
+	}, []);
 
 	// Status column filter
-	const statusFilterFn: FilterFn<typeof stockFeatures, TransformedRide> =
+	const statusFilterFn: FilterFn<typeof ridesTableFeatures, TransformedRide> =
 		useCallback((row, _columnId, filterValue) => {
 			if (filterValue === "all") return true;
 			return row.original.status === filterValue;
-		},
-		[],
-	);
+		}, []);
 
 	const columns = useMemo<
-		ColumnDef<typeof stockFeatures, TransformedRide, unknown>[]
+		ColumnDef<typeof ridesTableFeatures, TransformedRide, unknown>[]
 	>(
 		() => [
 			{
@@ -253,7 +262,7 @@ export function RidesTable({
 			},
 			{
 				accessorKey: "startTime",
-				sortingFn: "datetime",
+				sortFn: "datetime",
 				header: ({ column }) => {
 					return (
 						<button
@@ -425,7 +434,7 @@ export function RidesTable({
 	const table = useTable({
 		data: rides,
 		columns,
-		features: stockFeatures,
+		features: ridesTableFeatures,
 		state: {
 			rowSelection,
 			sorting,
