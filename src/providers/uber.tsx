@@ -5,11 +5,13 @@ import {
 	fetchCurrentUser,
 	fetchMultipleReceiptPdfs,
 	fetchMultipleTripDetails,
+	isUberAuthStatus,
 } from "@/server/uber-api";
 import type { DateRange } from "@/types/rides";
 import type { TransformedRide, UberAuthCredentials } from "@/types/uber-api";
 import type {
 	ConnectResult,
+	FetchRidesResult,
 	NormalizedRide,
 	ProviderDescriptor,
 } from "./types";
@@ -77,11 +79,12 @@ export const uberProvider: ProviderDescriptor = {
 		const auth: UberAuthCredentials = { cookie, csrfToken: "x" };
 		const result = await fetchCurrentUser({ data: { auth } });
 		if (result.error || !result.user) {
-			if (result.status === 404) {
+			if (isUberAuthStatus(result.status)) {
 				return {
 					error:
 						"Authentication failed. Your cookie may be invalid or expired. Please get a fresh cookie from Uber.",
-					status: 404,
+					status: result.status,
+					authFailed: true,
 				};
 			}
 			return {
@@ -108,6 +111,7 @@ export const uberProvider: ProviderDescriptor = {
 			return {
 				error: result.error || "Session expired.",
 				status: result.status,
+				authFailed: isUberAuthStatus(result.status),
 			};
 		}
 		const { user } = result;
@@ -125,7 +129,7 @@ export const uberProvider: ProviderDescriptor = {
 		auth,
 		range: DateRange,
 		onProgress,
-	): Promise<NormalizedRide[]> {
+	): Promise<FetchRidesResult> {
 		const credentials = auth as UberAuthCredentials;
 		const startTimeMs = startOfDay(range.from ?? new Date()).getTime();
 		const endTimeMs = endOfDay(range.to ?? new Date()).getTime();
@@ -153,6 +157,15 @@ export const uberProvider: ProviderDescriptor = {
 
 			if (result.error) {
 				console.error("Failed to fetch activities:", result.error);
+				// A rejected cookie must surface, not read as "no rides".
+				if (isUberAuthStatus(result.status)) {
+					return {
+						rides: allActivities.map(withProvider),
+						error: result.error,
+						status: result.status,
+						authFailed: true,
+					};
+				}
 				break;
 			}
 
@@ -162,7 +175,7 @@ export const uberProvider: ProviderDescriptor = {
 			pageToken = result.nextPageToken;
 		}
 
-		if (allActivities.length === 0) return [];
+		if (allActivities.length === 0) return { rides: [] };
 
 		// Step 2: enrich with trip details in batches.
 		const tripUUIDs = allActivities.map((a) => a.rideId);
@@ -189,7 +202,7 @@ export const uberProvider: ProviderDescriptor = {
 			}
 		}
 
-		return enriched.map(withProvider);
+		return { rides: enriched.map(withProvider) };
 	},
 
 	async fetchReceiptPdfs(auth, rides) {

@@ -42,12 +42,41 @@ export interface AuthField {
 }
 
 /**
- * Result of a connect() attempt: either credentials + user, or an error.
+ * A failed provider call.
+ *
+ * `authFailed` distinguishes "these credentials are rejected" from "the call
+ * did not go through". Only the former should drop the session — the provider
+ * APIs return transient 5xx, and logging the user out on one would force a
+ * needless re-auth. Each provider decides which statuses qualify, since the
+ * mapping is provider-specific (Uber answers 404 for a dead cookie).
+ */
+export interface ProviderFailure {
+	error: string;
+	/** HTTP status when one was observed. */
+	status?: number;
+	/** true → stored credentials are rejected; the caller should log out. */
+	authFailed?: boolean;
+}
+
+/**
+ * Result of a connect() attempt: either credentials + user, or a failure.
  * `auth` is opaque at the registry boundary and narrowed inside each provider.
  */
 export type ConnectResult =
 	| { auth: unknown; user: ProviderUser }
-	| { error: string; status?: number };
+	| ProviderFailure;
+
+/**
+ * Result of a fetchRides() call. Rides are returned even on a partial failure;
+ * `authFailed` tells the dashboard the session is dead rather than empty.
+ */
+export interface FetchRidesResult {
+	rides: NormalizedRide[];
+	error?: string;
+	status?: number;
+	/** true → credentials were rejected mid-fetch; the caller should log out. */
+	authFailed?: boolean;
+}
 
 /**
  * The single contract a provider implements. The dashboard, auth modal,
@@ -74,15 +103,13 @@ export interface ProviderDescriptor {
 	/** Validate credentials and resolve the current user. */
 	connect(input: Record<string, string>): Promise<ConnectResult>;
 	/** Re-resolve the user from previously stored credentials (on app load). */
-	restoreUser(
-		auth: unknown,
-	): Promise<{ user: ProviderUser } | { error: string; status?: number }>;
+	restoreUser(auth: unknown): Promise<{ user: ProviderUser } | ProviderFailure>;
 	/** Fetch rides in the given date range, normalized to NormalizedRide. */
 	fetchRides(
 		auth: unknown,
 		range: DateRange,
 		onProgress?: (message: string) => void,
-	): Promise<NormalizedRide[]>;
+	): Promise<FetchRidesResult>;
 	/** Optional: fetch per-ride receipt PDFs (only when capabilities.receiptPdf). */
 	fetchReceiptPdfs?(
 		auth: unknown,

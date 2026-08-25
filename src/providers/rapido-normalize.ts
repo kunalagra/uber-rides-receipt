@@ -7,9 +7,21 @@ import type { NormalizedRide } from "./types";
  */
 export interface RapidoOrder {
 	_id: string;
+	/** Order creation (booking) time — precedes pickup by the allocation wait. */
 	createdOn: number;
-	/** Last update time; used as the dropoff time for completed rides. */
+	/**
+	 * Last-touched timestamp. NOT a dropoff time: later mutations (payment
+	 * settlement, rating) push it hours past the ride, so it is not used for
+	 * endTime. Kept only because it is part of the payload we read.
+	 */
 	lastModifiedOn?: number;
+	/**
+	 * Billed ride duration in minutes (float). This is the figure Rapido itself
+	 * prints on the invoice — `invoice.BODY` renders it as `Math.round(rideTime)`
+	 * minutes. Populated on cancelled orders too, where it is a stale booking
+	 * estimate and must be ignored.
+	 */
+	rideTime?: number;
 	amount: number;
 	status: string;
 	serviceName: string;
@@ -83,15 +95,28 @@ export function decodeRapidoToken(token: string): DecodedRapidoToken | null {
 }
 
 /**
+ * Derive a dropoff timestamp as booking time + billed ride duration.
+ *
+ * Rapido's payload carries no pickup or dropoff timestamp, so this is the
+ * closest available: it runs early by the driver-allocation wait (a few
+ * minutes), where the previous `lastModifiedOn` proxy ran late by hours.
+ * Only completed rides get one — on cancelled orders `rideTime` is the
+ * booking estimate, and Rapido omits it from their own invoice.
+ */
+function endTimeFor(order: RapidoOrder): string {
+	if (order.status !== "dropped") return "";
+	if (!order.rideTime || order.rideTime <= 0) return "";
+	return new Date(order.createdOn + order.rideTime * 60_000).toISOString();
+}
+
+/**
  * Normalize a single Rapido order into the canonical NormalizedRide shape.
  */
 export function normalizeRapidoOrder(order: RapidoOrder): NormalizedRide {
 	return {
 		rideId: order._id,
 		startTime: new Date(order.createdOn).toISOString(),
-		endTime: order.lastModifiedOn
-			? new Date(order.lastModifiedOn).toISOString()
-			: "",
+		endTime: endTimeFor(order),
 		startLocation: order.pickupLocation?.address || "",
 		endLocation: order.dropLocation?.address || "",
 		totalAmount: order.amount,

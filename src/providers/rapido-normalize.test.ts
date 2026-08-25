@@ -62,6 +62,7 @@ const droppedRide: RapidoOrder = {
 	_id: "aaaaaaaaaaaaaaaaaaaaaaaa",
 	createdOn: 1778232081797,
 	lastModifiedOn: 1778233136936,
+	rideTime: 15.5,
 	amount: 75,
 	status: "dropped",
 	serviceName: "Auto",
@@ -74,6 +75,7 @@ const cancelled: RapidoOrder = {
 	_id: "bbbbbbbbbbbbbbbbbbbbbbbb",
 	createdOn: 1777892260161,
 	lastModifiedOn: 1777892467356,
+	rideTime: 9.93,
 	amount: 0,
 	status: "customerCancelled",
 	serviceName: "Auto",
@@ -87,7 +89,7 @@ describe("normalizeRapidoOrder", () => {
 		expect(normalizeRapidoOrder(droppedRide)).toEqual({
 			rideId: "aaaaaaaaaaaaaaaaaaaaaaaa",
 			startTime: new Date(1778232081797).toISOString(),
-			endTime: new Date(1778233136936).toISOString(),
+			endTime: new Date(1778232081797 + 15.5 * 60_000).toISOString(),
 			startLocation: "1 Pickup Road, Example City",
 			endLocation: "2 Dropoff Road, Example City",
 			totalAmount: 75,
@@ -105,6 +107,39 @@ describe("normalizeRapidoOrder", () => {
 		const ride = normalizeRapidoOrder(cancelled);
 		expect(ride.status).toBe("CANCELLED");
 		expect(ride.totalAmount).toBe(0);
+	});
+});
+
+describe("normalizeRapidoOrder endTime", () => {
+	test("derives endTime from createdOn + rideTime, not lastModifiedOn", () => {
+		const ride = normalizeRapidoOrder(droppedRide);
+		expect(ride.endTime).toBe(
+			new Date(1778232081797 + 15.5 * 60_000).toISOString(),
+		);
+		// lastModifiedOn is a last-touched timestamp, not a dropoff time.
+		expect(ride.endTime).not.toBe(new Date(1778233136936).toISOString());
+	});
+
+	test("ignores rideTime on cancelled rides (stale booking estimate)", () => {
+		expect(normalizeRapidoOrder(cancelled).endTime).toBe("");
+	});
+
+	test("returns an empty endTime when rideTime is absent or zero", () => {
+		expect(
+			normalizeRapidoOrder({ ...droppedRide, rideTime: undefined }).endTime,
+		).toBe("");
+		expect(normalizeRapidoOrder({ ...droppedRide, rideTime: 0 }).endTime).toBe(
+			"",
+		);
+	});
+
+	test("rounds to the same whole minutes Rapido prints on the invoice", () => {
+		// Real sample: rideTime 65.68 renders as "66 min" in invoice.BODY.
+		const ride = normalizeRapidoOrder({ ...droppedRide, rideTime: 65.68 });
+		const mins =
+			(new Date(ride.endTime).getTime() - new Date(ride.startTime).getTime()) /
+			60_000;
+		expect(Math.round(mins)).toBe(66);
 	});
 });
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { format, startOfMonth } from "date-fns";
-import { Calendar, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, Calendar, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthSetupModal } from "@/components/AuthSetupModal";
 import { DateRangePicker } from "@/components/DateRangePicker";
@@ -9,6 +9,7 @@ import { Navbar } from "@/components/Navbar";
 import { RidesTable } from "@/components/RidesTable";
 import { SelectionSummary } from "@/components/SelectionSummary";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { downloadBlob, generateCsv, generateSummaryPdf } from "@/lib/pdf-utils";
@@ -55,6 +56,10 @@ function ReceiptsDashboard() {
 	// Auth modal state
 	const [authModalOpen, setAuthModalOpen] = useState(false);
 
+	// Set when a session is dropped for the user (rejected credentials), so the
+	// logout is explained rather than silently emptying the page.
+	const [authNotice, setAuthNotice] = useState<string | null>(null);
+
 	// Date range state - default to 1st of current month to today
 	const [dateRange, setDateRange] = useState<DateRange>({
 		from: startOfMonth(new Date()),
@@ -73,33 +78,58 @@ function ReceiptsDashboard() {
 		setFetchProgress("");
 	}, []);
 
+	// Drop a provider's stored session. `notice` explains an involuntary logout.
+	const clearSession = useCallback((id: ProviderId, notice?: string) => {
+		localStorage.removeItem(getProvider(id).authStorageKey);
+		setAuth(null);
+		setUser(null);
+		setAuthNotice(notice ?? null);
+	}, []);
+
 	// Restore a provider's stored session (auth + user) on load / switch
-	const restoreSession = useCallback(async (id: ProviderId) => {
-		const desc = getProvider(id);
-		const stored = localStorage.getItem(desc.authStorageKey);
-		if (!stored) {
-			setAuth(null);
-			setUser(null);
-			return;
-		}
-		try {
-			const parsedAuth = JSON.parse(stored);
-			const result = await desc.restoreUser(parsedAuth);
-			if ("user" in result) {
-				setAuth(parsedAuth);
-				setUser(result.user);
-			} else {
-				// Invalid/expired credentials → clear this provider's session
-				localStorage.removeItem(desc.authStorageKey);
+	const restoreSession = useCallback(
+		async (id: ProviderId) => {
+			const desc = getProvider(id);
+			const stored = localStorage.getItem(desc.authStorageKey);
+			if (!stored) {
 				setAuth(null);
 				setUser(null);
+				return;
 			}
-		} catch {
-			localStorage.removeItem(desc.authStorageKey);
-			setAuth(null);
-			setUser(null);
-		}
-	}, []);
+
+			let parsedAuth: unknown;
+			try {
+				parsedAuth = JSON.parse(stored);
+			} catch {
+				clearSession(id);
+				return;
+			}
+
+			try {
+				const result = await desc.restoreUser(parsedAuth);
+				if ("user" in result) {
+					setAuth(parsedAuth);
+					setUser(result.user);
+					setAuthNotice(null);
+					return;
+				}
+				if (result.authFailed) {
+					// Credentials rejected → this session is genuinely dead.
+					clearSession(id, result.error);
+					return;
+				}
+				// Provider unreachable, credentials untested. Keep the session; a
+				// transient 5xx should not cost the user their stored token.
+				setAuth(parsedAuth);
+				setUser(null);
+			} catch (error) {
+				console.error("Failed to restore session:", error);
+				setAuth(parsedAuth);
+				setUser(null);
+			}
+		},
+		[clearSession],
+	);
 
 	// On mount: pick last-used provider and restore its session
 	useEffect(() => {
@@ -137,6 +167,7 @@ function ReceiptsDashboard() {
 			if (id === providerId) return;
 			setProviderId(id);
 			saveSelectedProviderId(id);
+			setAuthNotice(null);
 			resetRideState();
 			restoreSession(id);
 		},
@@ -147,14 +178,13 @@ function ReceiptsDashboard() {
 	const handleAuthSuccess = (newAuth: unknown, newUser: ProviderUser) => {
 		setAuth(newAuth);
 		setUser(newUser);
+		setAuthNotice(null);
 		resetRideState();
 	};
 
 	// Handle logout (scoped to active provider)
 	const handleLogout = () => {
-		localStorage.removeItem(provider.authStorageKey);
-		setAuth(null);
-		setUser(null);
+		clearSession(providerId);
 		resetRideState();
 	};
 
@@ -168,20 +198,31 @@ function ReceiptsDashboard() {
 		setFetchProgress("Fetching rides...");
 
 		try {
-			const fetched = await provider.fetchRides(
+			const result = await provider.fetchRides(
 				auth,
 				dateRange,
 				setFetchProgress,
 			);
-			setRides(fetched);
 			setFetchProgress("");
+
+			// A rejected token used to surface as an empty table. Log out instead.
+			if (result.authFailed) {
+				clearSession(
+					providerId,
+					`Your ${provider.name} session has expired. Reconnect to continue.`,
+				);
+				resetRideState();
+				return;
+			}
+
+			setRides(result.rides);
 		} catch (error) {
 			console.error("Failed to fetch rides:", error);
 			setFetchProgress("");
 		} finally {
 			setIsLoadingRides(false);
 		}
-	}, [auth, dateRange, provider]);
+	}, [auth, dateRange, provider, providerId, clearSession, resetRideState]);
 
 	const accountName = user
 		? `${user.firstName} ${user.lastName}`.trim()
@@ -344,6 +385,15 @@ function ReceiptsDashboard() {
 			/>
 
 			<div className="container mx-auto px-4 py-6 pb-24 max-w-6xl">
+				{/* Session-expired notice (set when we log the user out ourselves) */}
+				{authNotice && (
+					<Alert variant="destructive" className="mb-6">
+						<AlertCircle />
+						<AlertTitle>Session expired</AlertTitle>
+						<AlertDescription>{authNotice}</AlertDescription>
+					</Alert>
+				)}
+
 				{/* Fetch Rides Section */}
 				{isAuthenticated && (
 					<Card className="mb-6">

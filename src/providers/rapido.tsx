@@ -3,12 +3,13 @@ import { stripBearerPrefix } from "@/providers/rapido-normalize";
 import {
 	fetchRapidoOrders,
 	fetchRapidoUser,
+	isRapidoAuthStatus,
 	type RapidoAuthCredentials,
 } from "@/server/rapido-api";
 import type { DateRange } from "@/types/rides";
 import type {
 	ConnectResult,
-	NormalizedRide,
+	FetchRidesResult,
 	ProviderDescriptor,
 } from "./types";
 
@@ -72,8 +73,14 @@ export const rapidoProvider: ProviderDescriptor = {
 		}
 		const auth: RapidoAuthCredentials = { token };
 		const result = await fetchRapidoUser({ data: { auth } });
+		// Strict at login: only store a token we have seen work. An unverified
+		// token would look connected and then fail on every fetch.
 		if (result.error || !result.user) {
-			return { error: result.error || "Failed to authenticate." };
+			return {
+				error: result.error || "Failed to authenticate.",
+				status: result.status,
+				authFailed: isRapidoAuthStatus(result.status),
+			};
 		}
 		return { auth, user: result.user };
 	},
@@ -81,13 +88,20 @@ export const rapidoProvider: ProviderDescriptor = {
 	async restoreUser(auth) {
 		const credentials = auth as RapidoAuthCredentials;
 		const result = await fetchRapidoUser({ data: { auth: credentials } });
-		if (result.error || !result.user) {
-			return { error: result.error || "Token expired." };
+		// Lenient on restore: drop the session only when the token was actually
+		// rejected. fetchRapidoUser still returns the decoded user when Rapido is
+		// merely unreachable, so a blip does not cost the user their session.
+		if (!result.user) {
+			return {
+				error: result.error || "Session expired.",
+				status: result.status,
+				authFailed: isRapidoAuthStatus(result.status),
+			};
 		}
 		return { user: result.user };
 	},
 
-	async fetchRides(auth, range: DateRange): Promise<NormalizedRide[]> {
+	async fetchRides(auth, range: DateRange): Promise<FetchRidesResult> {
 		const credentials = auth as RapidoAuthCredentials;
 		const fromMs = range.from ? new Date(range.from).getTime() : undefined;
 		const toMs = range.to ? new Date(range.to).getTime() : undefined;
@@ -98,6 +112,11 @@ export const rapidoProvider: ProviderDescriptor = {
 		if (result.error) {
 			console.error("Failed to fetch Rapido rides:", result.error);
 		}
-		return result.rides;
+		return {
+			rides: result.rides,
+			error: result.error,
+			status: result.status,
+			authFailed: isRapidoAuthStatus(result.status),
+		};
 	},
 };

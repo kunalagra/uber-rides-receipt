@@ -31,6 +31,16 @@ class UberAPIError extends Error {
 }
 
 /**
+ * Whether a status means the cookie was rejected rather than the request
+ * merely failing. Uber answers 404 for a dead session on top of the usual
+ * 401/403, so all three drop the session; anything else is treated as
+ * transient and leaves it intact.
+ */
+export function isUberAuthStatus(status?: number): boolean {
+	return status === 401 || status === 403 || status === 404;
+}
+
+/**
  * Makes a GraphQL request to Uber's API
  */
 async function uberGraphQL<T>(
@@ -120,6 +130,7 @@ export const fetchActivities = createServerFn({ method: "POST" })
 			activities: TransformedRide[];
 			nextPageToken: string | null;
 			error?: string;
+			status?: number;
 		}> => {
 			try {
 				const variables = buildActivitiesVariables({
@@ -192,6 +203,7 @@ export const fetchActivities = createServerFn({ method: "POST" })
 					activities: [],
 					nextPageToken: null,
 					error: error instanceof Error ? error.message : "Unknown error",
+					status: error instanceof UberAPIError ? error.status : undefined,
 				};
 			}
 		},
