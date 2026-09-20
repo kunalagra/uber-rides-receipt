@@ -14,7 +14,7 @@
     "@base-ui/react": "^1.8.0",
     "@daypicker/react": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/react-router": "^1.170.34",
+    "@tanstack/react-router": "^1.170.38",
     "@tanstack/react-start": "^1.168.51",
     "@tanstack/react-table": "^9.2.4",
     "class-variance-authority": "^0.7.1",
