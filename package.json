@@ -17,6 +17,7 @@
     "@tanstack/react-router": "^1.170.38",
     "@tanstack/react-start": "^1.168.56",
     "@tanstack/react-table": "^9.2.4",
+    "@vercel/analytics": "^2.0.1",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.2",
     "date-fns": "^4.4.0",
