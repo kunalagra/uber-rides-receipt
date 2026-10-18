@@ -19,7 +19,7 @@
     "@tanstack/react-table": "^9.2.6",
     "@vercel/analytics": "^2.0.1",
     "class-variance-authority": "^0.7.1",
-    "cn": "^0.3.2",
+    "cn": "^0.4.0",
     "date-fns": "^4.4.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
