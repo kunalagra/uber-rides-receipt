@@ -14,7 +14,7 @@
     "@base-ui/react": "^1.9.0",
     "@daypicker/react": "^10.0.2",
     "@tailwindcss/vite": "^4.3.4",
-    "@tanstack/react-router": "^1.170.45",
+    "@tanstack/react-router": "^1.170.46",
     "@tanstack/react-start": "^1.169.2",
     "@tanstack/react-table": "^9.3.1",
     "@vercel/analytics": "^2.0.1",
